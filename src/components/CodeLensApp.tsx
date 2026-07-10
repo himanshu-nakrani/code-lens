@@ -1,0 +1,1294 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DropZone } from "./DropZone";
+import { FileTree } from "./FileTree";
+import { CodeBlock } from "./CodeBlock";
+import { CodeSearch } from "./CodeSearch";
+import { TaskToggles } from "./TaskToggles";
+import { ResultsPanel } from "./ResultsPanel";
+import { SampleCards } from "./SampleCards";
+import { StatusBar } from "./StatusBar";
+import { ToastStack, type ToastMessage } from "./Toast";
+import { PasteModal } from "./PasteModal";
+import { ShortcutsModal } from "./ShortcutsModal";
+import { CommandPalette, type CommandItem } from "./CommandPalette";
+import { LensBackdrop } from "./LensBackdrop";
+import { ScanOverlay } from "./ScanOverlay";
+import { ApertureLogo } from "./ApertureLogo";
+import { Typewriter } from "./Typewriter";
+import { FocusHUD } from "./FocusHUD";
+import { LockBurst } from "./LockBurst";
+import { GrainOverlay } from "./GrainOverlay";
+import { FileNav } from "./FileNav";
+import { SAMPLE_META, SAMPLE_SNIPPETS } from "@/lib/samples";
+import { ingestFiles } from "@/lib/files";
+import { downloadText, resultToMarkdown } from "@/lib/export";
+import { detectLanguage } from "@/lib/languages";
+import { analyzeSource } from "@/lib/stats";
+import {
+  clearWorkspace,
+  loadWorkspace,
+  saveWorkspace,
+} from "@/lib/workspace";
+import type {
+  AnalysisResult,
+  AnalyzeResponse,
+  CodeFile,
+  TaskId,
+} from "@/lib/types";
+
+const DEFAULT_TASKS: TaskId[] = [
+  "explain",
+  "fix_bugs",
+  "generate_tests",
+  "suggest_improvements",
+];
+
+const TASKS_STORAGE_KEY = "code-lens-tasks";
+
+type MobilePane = "files" | "code" | "results";
+type ViewerMode = "source" | "fixed";
+
+/** Read task prefs from localStorage — client-only, never use in useState init (SSR mismatch). */
+function loadStoredTasks(): Set<TaskId> | null {
+  try {
+    const raw = localStorage.getItem(TASKS_STORAGE_KEY);
+    if (!raw) return null;
+    const arr = JSON.parse(raw) as string[];
+    const valid = arr.filter((t): t is TaskId =>
+      DEFAULT_TASKS.includes(t as TaskId)
+    );
+    return valid.length ? new Set(valid) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function CodeLensApp() {
+  const [files, setFiles] = useState<CodeFile[]>([]);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  // Always start with defaults so server HTML matches first client paint
+  const [enabledTasks, setEnabledTasks] = useState<Set<TaskId>>(
+    () => new Set(DEFAULT_TASKS)
+  );
+  const [ingestNotes, setIngestNotes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [parseError, setParseError] = useState(false);
+  const [rawText, setRawText] = useState<string | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [lastTarget, setLastTarget] = useState<string | null>(null);
+  const [durationMs, setDurationMs] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [history, setHistory] = useState<
+    Array<{ id: number; target: string; tasks: TaskId[]; at: number; durationMs: number }>
+  >([]);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("code");
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [fontSize, setFontSize] = useState(12.5);
+  const [viewerMode, setViewerMode] = useState<ViewerMode>("source");
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [lockBurstAt, setLockBurstAt] = useState<number | null>(null);
+  const toastId = useRef(0);
+  const analyzeRef = useRef<() => void>(() => {});
+  const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Client-only restore after mount (avoids SSR/localStorage hydration mismatch)
+  useEffect(() => {
+    const snap = loadWorkspace();
+    if (snap?.files?.length) {
+      setFiles(snap.files);
+      setSelectedPath(snap.selectedPath);
+      if (snap.result) setResult(snap.result);
+      if (snap.lastTarget) setLastTarget(snap.lastTarget);
+      if (snap.durationMs != null) setDurationMs(snap.durationMs);
+      if (snap.tasks?.length) {
+        setEnabledTasks(new Set(snap.tasks));
+      } else {
+        const stored = loadStoredTasks();
+        if (stored) setEnabledTasks(stored);
+      }
+      setIngestNotes([
+        `Restored workspace (${snap.files.length} file${snap.files.length === 1 ? "" : "s"})`,
+      ]);
+    } else {
+      const stored = loadStoredTasks();
+      if (stored) setEnabledTasks(stored);
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist workspace
+  useEffect(() => {
+    if (!hydrated) return;
+    if (files.length === 0) {
+      clearWorkspace();
+      return;
+    }
+    saveWorkspace({
+      files,
+      selectedPath,
+      result,
+      lastTarget,
+      durationMs,
+      tasks: Array.from(enabledTasks),
+      savedAt: Date.now(),
+    });
+  }, [hydrated, files, selectedPath, result, lastTarget, durationMs, enabledTasks]);
+
+  // Health check
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((d: { hasKey?: boolean }) => setHasApiKey(Boolean(d.hasKey)))
+      .catch(() => setHasApiKey(null));
+  }, []);
+
+  const selectedFile = useMemo(
+    () => (selectedPath ? files.find((f) => f.path === selectedPath) ?? null : null),
+    [files, selectedPath]
+  );
+
+  const fixedCode = result?.bug_fixes?.fixed_code ?? "";
+  const showingFixed = viewerMode === "fixed" && Boolean(fixedCode);
+  const viewerCode = showingFixed ? fixedCode : selectedFile?.content ?? "";
+  const viewerLang = selectedFile?.language ?? "text";
+  const viewerName = selectedFile?.path ?? (files.length ? "codebase" : "");
+  const lineCount = useMemo(
+    () => (viewerCode ? viewerCode.split("\n").length : 0),
+    [viewerCode]
+  );
+  const totalBytes = useMemo(
+    () => files.reduce((sum, f) => sum + f.size, 0),
+    [files]
+  );
+  const sourceStats = useMemo(() => {
+    if (!selectedFile) return null;
+    return analyzeSource(selectedFile.content, selectedFile.language);
+  }, [selectedFile]);
+
+  // Only persist after client hydrate so defaults do not clobber stored prefs
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(Array.from(enabledTasks)));
+    } catch {
+      /* ignore */
+    }
+  }, [enabledTasks, hydrated]);
+
+  const selectPath = useCallback((path: string | null) => {
+    setSelectedPath(path);
+    setViewerMode("source");
+    setFindOpen(false);
+  }, []);
+
+  const pushToast = useCallback((kind: ToastMessage["kind"], text: string) => {
+    const id = ++toastId.current;
+    setToasts((prev) => [...prev.slice(-4), { id, kind, text }]);
+  }, []);
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+    const start = Date.now();
+    const id = setInterval(() => setElapsedMs(Date.now() - start), 100);
+    return () => clearInterval(id);
+  }, [loading]);
+
+  const handleFiles = useCallback(
+    async (list: FileList | File[]) => {
+      const res = await ingestFiles(list);
+      setFiles(res.files);
+      selectPath(res.files[0]?.path ?? null);
+      setResult(null);
+      setError(null);
+      setParseError(false);
+      setRawText(null);
+      setDurationMs(null);
+      setMobilePane("code");
+
+      const notes: string[] = [];
+      if (res.skipped.length) {
+        notes.push(
+          `Skipped ${res.skipped.length}: ${res.skipped.slice(0, 5).join("; ")}${res.skipped.length > 5 ? "…" : ""}`
+        );
+      }
+      if (res.truncated.length) {
+        notes.push(`Truncated: ${res.truncated.join(", ")}`);
+      }
+      notes.push(...res.warnings);
+      if (res.files.length === 0 && list.length > 0) {
+        notes.push("No text/source files were accepted from that upload.");
+      }
+      setIngestNotes(notes);
+      if (res.files.length > 0) {
+        pushToast(
+          "success",
+          `Loaded ${res.files.length} file${res.files.length === 1 ? "" : "s"}`
+        );
+      }
+    },
+    [pushToast, selectPath]
+  );
+
+  const addPastedFile = useCallback(
+    (opts: { filename: string; content: string; language: string }) => {
+      const path = opts.filename.startsWith("pasted/")
+        ? opts.filename
+        : `pasted/${opts.filename}`;
+      const file: CodeFile = {
+        id: `paste-${Date.now()}`,
+        name: opts.filename.split("/").pop() || opts.filename,
+        path,
+        content: opts.content,
+        language: opts.language || detectLanguage(opts.filename),
+        size: new TextEncoder().encode(opts.content).length,
+      };
+      setFiles((prev) => {
+        const without = prev.filter((f) => f.path !== path);
+        return [...without, file].sort((a, b) => a.path.localeCompare(b.path));
+      });
+      selectPath(path);
+      setResult(null);
+      setError(null);
+      setIngestNotes([`Pasted ${path}`]);
+      setMobilePane("code");
+      pushToast("success", `Added ${file.name}`);
+    },
+    [pushToast, selectPath]
+  );
+
+  const loadSample = useCallback(
+    (sample: CodeFile, autoAnalyze = false) => {
+      const meta = SAMPLE_META[sample.id];
+      if (meta?.recommendedTasks) {
+        setEnabledTasks(new Set(meta.recommendedTasks as TaskId[]));
+      }
+      setFiles([{ ...sample }]);
+      selectPath(sample.path);
+      setResult(null);
+      setError(null);
+      setParseError(false);
+      setRawText(null);
+      setDurationMs(null);
+      setIngestNotes([
+        `Loaded sample: ${sample.name}${meta ? ` · ${meta.tag}` : ""}`,
+      ]);
+      setMobilePane("code");
+      pushToast("info", `Sample loaded: ${sample.name}`);
+
+      if (autoAnalyze) {
+        setTimeout(() => loadAndAnalyzeRef.current(sample), 50);
+      }
+    },
+    [pushToast, selectPath]
+  );
+
+  const loadAllSamples = useCallback(() => {
+    const all = SAMPLE_SNIPPETS.map((s) => ({ ...s }));
+    setFiles(all);
+    selectPath(all[0]?.path ?? null);
+    setResult(null);
+    setError(null);
+    setParseError(false);
+    setRawText(null);
+    setDurationMs(null);
+    setIngestNotes([`Loaded ${all.length} sample snippets`]);
+    pushToast("info", "All samples loaded");
+  }, [pushToast, selectPath]);
+
+  const clearFiles = useCallback(() => {
+    setFiles([]);
+    selectPath(null);
+    setResult(null);
+    setError(null);
+    setParseError(false);
+    setRawText(null);
+    setDurationMs(null);
+    setIngestNotes([]);
+    setLastTarget(null);
+    clearWorkspace();
+  }, [selectPath]);
+
+  const cancelAnalyze = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
+    pushToast("info", "Analysis cancelled");
+  }, [pushToast]);
+
+  const analyzeWith = useCallback(
+    async (fileList: CodeFile[], path: string | null, tasks: Set<TaskId>) => {
+      if (fileList.length === 0) {
+        setError("Load a file, folder, or sample first.");
+        return;
+      }
+      if (tasks.size === 0) {
+        setError("Enable at least one analysis task.");
+        return;
+      }
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setLoading(true);
+      setElapsedMs(0);
+      setError(null);
+      setParseError(false);
+      setRawText(null);
+      setResult(null);
+      setViewerMode("source");
+      setFindOpen(false);
+      const target = path ?? "entire codebase";
+      setLastTarget(target);
+      setMobilePane("results");
+      const started = Date.now();
+
+      try {
+        const payload = {
+          files: fileList.map((f) => ({
+            name: f.name,
+            path: f.path,
+            content: f.content,
+            language: f.language,
+          })),
+          selectedPath: path,
+          tasks: Array.from(tasks),
+        };
+
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        let data: AnalyzeResponse;
+        try {
+          data = (await res.json()) as AnalyzeResponse;
+        } catch {
+          if (controller.signal.aborted) return;
+          setError(`Server returned non-JSON (HTTP ${res.status}).`);
+          setLoading(false);
+          return;
+        }
+
+        if (controller.signal.aborted) return;
+
+        const took = Date.now() - started;
+        setDurationMs(took);
+
+        if (!data.ok) {
+          setError(data.error || `Request failed (HTTP ${res.status}).`);
+          setParseError(Boolean(data.parseError));
+          setRawText(data.rawText ?? null);
+          setLoading(false);
+          pushToast("error", "Analysis failed");
+          return;
+        }
+
+        setResult(data.result);
+        setRawText(data.rawText ?? null);
+        setLockBurstAt(Date.now());
+        setHistory((h) =>
+          [
+            {
+              id: Date.now(),
+              target,
+              tasks: Array.from(tasks),
+              at: Date.now(),
+              durationMs: took,
+            },
+            ...h,
+          ].slice(0, 8)
+        );
+        pushToast("success", `Focus locked · ${(took / 1000).toFixed(1)}s`);
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") {
+          return;
+        }
+        setError(
+          e instanceof Error ? e.message : "Network error calling /api/analyze."
+        );
+        pushToast("error", "Network error");
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+        }
+      }
+    },
+    [pushToast]
+  );
+
+  const analyze = useCallback(() => {
+    void analyzeWith(files, selectedPath, enabledTasks);
+  }, [analyzeWith, files, selectedPath, enabledTasks]);
+
+  useEffect(() => {
+    analyzeRef.current = analyze;
+    loadAndAnalyzeRef.current = (sample: CodeFile) => {
+      const meta = SAMPLE_META[sample.id];
+      const tasks = new Set(
+        (meta?.recommendedTasks as TaskId[] | undefined) ?? DEFAULT_TASKS
+      );
+      void analyzeWith([sample], sample.path, tasks);
+    };
+  }, [analyze, analyzeWith]);
+
+  const applyFix = useCallback(
+    (code: string) => {
+      if (!selectedPath) {
+        pushToast("error", "Select a file to apply the fix");
+        return;
+      }
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.path === selectedPath
+            ? {
+                ...f,
+                content: code,
+                size: new TextEncoder().encode(code).length,
+              }
+            : f
+        )
+      );
+      setViewerMode("source");
+      setMobilePane("code");
+      pushToast("success", "Applied fixed code to " + selectedPath);
+    },
+    [selectedPath, pushToast]
+  );
+
+  const addTestsAsFile = useCallback(
+    (code: string, framework: string) => {
+      const base = selectedFile?.name?.replace(/\.[^.]+$/, "") || "generated";
+      const lang = selectedFile?.language || "javascript";
+      let name: string;
+      let language: string;
+      if (lang === "python") {
+        name = `test_${base}.py`;
+        language = "python";
+      } else if (lang === "typescript" || lang === "tsx") {
+        name = `${base}.test.ts`;
+        language = "typescript";
+      } else {
+        name = `${base}.test.js`;
+        language = "javascript";
+      }
+      const path = `tests/${name}`;
+      const file: CodeFile = {
+        id: `tests-${Date.now()}`,
+        name,
+        path,
+        content: code,
+        language,
+        size: new TextEncoder().encode(code).length,
+      };
+      setFiles((prev) => {
+        const without = prev.filter((f) => f.path !== path);
+        return [...without, file].sort((a, b) => a.path.localeCompare(b.path));
+      });
+      selectPath(path);
+      setMobilePane("code");
+      pushToast("success", `Added ${path} (${framework})`);
+    },
+    [selectedFile, pushToast, selectPath]
+  );
+
+  const exportMarkdown = useCallback(() => {
+    if (!result) return;
+    const md = resultToMarkdown(result, {
+      target: lastTarget ?? (viewerName || "code"),
+      language: viewerLang,
+      tasks: Array.from(enabledTasks),
+      durationMs: durationMs ?? undefined,
+    });
+    const safe = (lastTarget ?? "analysis").replace(/[^\w.-]+/g, "_");
+    downloadText(`code-lens-${safe}.md`, md, "text/markdown");
+    pushToast("success", "Exported Markdown");
+  }, [result, lastTarget, viewerName, viewerLang, enabledTasks, durationMs, pushToast]);
+
+  const exportJson = useCallback(() => {
+    if (!result) return;
+    const safe = (lastTarget ?? "analysis").replace(/[^\w.-]+/g, "_");
+    downloadText(
+      `code-lens-${safe}.json`,
+      JSON.stringify(
+        {
+          target: lastTarget,
+          language: viewerLang,
+          tasks: Array.from(enabledTasks),
+          durationMs,
+          result,
+        },
+        null,
+        2
+      ),
+      "application/json"
+    );
+    pushToast("success", "Exported JSON");
+  }, [result, lastTarget, viewerLang, enabledTasks, durationMs, pushToast]);
+
+  const copyShareSummary = useCallback(async () => {
+    if (!result) {
+      pushToast("error", "No analysis to share");
+      return;
+    }
+    const issues = result.bug_fixes?.issues?.length ?? 0;
+    const tips = result.improvements?.length ?? 0;
+    const text = [
+      `Code Lens · ${lastTarget ?? viewerName}`,
+      `Model: grok-4.5 · ${durationMs != null ? (durationMs / 1000).toFixed(1) + "s" : "n/a"}`,
+      result.explanation ? `Explain: ${result.explanation.slice(0, 200)}…` : null,
+      issues ? `Bugs: ${issues}` : null,
+      result.tests ? `Tests: ${result.tests.framework}` : null,
+      tips ? `Improvements: ${tips}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    await navigator.clipboard.writeText(text);
+    pushToast("success", "Summary copied to clipboard");
+  }, [result, lastTarget, viewerName, durationMs, pushToast]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      const tag = (e.target as HTMLElement)?.tagName;
+      const inInput =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (e.target as HTMLElement)?.isContentEditable;
+
+      if (meta && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCmdOpen(true);
+        return;
+      }
+      if (meta && e.key === "Enter" && !pasteOpen && !cmdOpen) {
+        e.preventDefault();
+        if (!loading) analyzeRef.current();
+        return;
+      }
+      if (meta && e.key.toLowerCase() === "f" && !inInput) {
+        e.preventDefault();
+        setFindOpen((v) => !v);
+        setMobilePane("code");
+        return;
+      }
+      if (meta && e.shiftKey && (e.key === "p" || e.key === "P")) {
+        e.preventDefault();
+        setPasteOpen(true);
+        return;
+      }
+      if (meta && e.shiftKey && (e.key === "?" || e.key === "/")) {
+        e.preventDefault();
+        setHelpOpen((v) => !v);
+        return;
+      }
+      if (e.key === "Escape") {
+        setPasteOpen(false);
+        setHelpOpen(false);
+        setCmdOpen(false);
+        setFindOpen(false);
+        return;
+      }
+      // Number keys: samples when empty; [ ] file nav; 1-3 panes when loaded
+      if (!inInput && !meta && !e.altKey && !pasteOpen && !cmdOpen) {
+        if (files.length === 0) {
+          if (e.key === "1") {
+            e.preventDefault();
+            loadSample(SAMPLE_SNIPPETS[0], true);
+          }
+          if (e.key === "2") {
+            e.preventDefault();
+            loadSample(SAMPLE_SNIPPETS[1], true);
+          }
+          if (e.key === "3") {
+            e.preventDefault();
+            loadSample(SAMPLE_SNIPPETS[2], true);
+          }
+        } else {
+          if (e.key === "1") setMobilePane("files");
+          if (e.key === "2") setMobilePane("code");
+          if (e.key === "3") setMobilePane("results");
+          if (e.key === "[" || e.key === "]") {
+            const idx = files.findIndex((f) => f.path === selectedPath);
+            if (e.key === "[" && idx > 0) {
+              e.preventDefault();
+              selectPath(files[idx - 1].path);
+            }
+            if (e.key === "]" && idx >= 0 && idx < files.length - 1) {
+              e.preventDefault();
+              selectPath(files[idx + 1].path);
+            }
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [loading, pasteOpen, cmdOpen, files, selectedPath, loadSample, selectPath]);
+
+  const canAnalyze = files.length > 0 && enabledTasks.size > 0 && !loading;
+
+  const commands: CommandItem[] = useMemo(
+    () => [
+      {
+        id: "analyze",
+        label: "Analyze current selection",
+        hint: "⌘↵",
+        group: "Analysis",
+        run: () => analyzeRef.current(),
+      },
+      {
+        id: "cancel",
+        label: "Cancel analysis",
+        group: "Analysis",
+        run: () => cancelAnalyze(),
+      },
+      {
+        id: "paste",
+        label: "Paste code…",
+        hint: "⌘⇧P",
+        group: "Workspace",
+        run: () => setPasteOpen(true),
+      },
+      {
+        id: "find",
+        label: "Find in file",
+        hint: "⌘F",
+        group: "Workspace",
+        run: () => {
+          setFindOpen(true);
+          setMobilePane("code");
+        },
+      },
+      {
+        id: "focus",
+        label: focusMode ? "Exit focus mode" : "Focus mode (hide files)",
+        group: "Workspace",
+        run: () => setFocusMode((f) => !f),
+      },
+      {
+        id: "clear",
+        label: "Clear workspace",
+        group: "Workspace",
+        run: () => clearFiles(),
+      },
+      ...SAMPLE_SNIPPETS.map((s) => ({
+        id: `sample-${s.id}`,
+        label: `Load sample: ${s.name}`,
+        group: "Samples",
+        run: () => loadSample(s, false),
+      })),
+      {
+        id: "sample-all",
+        label: "Load all samples",
+        group: "Samples",
+        run: () => loadAllSamples(),
+      },
+      {
+        id: "sample-analyze-js",
+        label: "Load & analyze JS bug sample",
+        group: "Samples",
+        run: () => loadSample(SAMPLE_SNIPPETS[0], true),
+      },
+      {
+        id: "export-md",
+        label: "Export results as Markdown",
+        group: "Export",
+        run: () => exportMarkdown(),
+      },
+      {
+        id: "export-json",
+        label: "Export results as JSON",
+        group: "Export",
+        run: () => exportJson(),
+      },
+      {
+        id: "share",
+        label: "Copy share summary",
+        group: "Export",
+        run: () => void copyShareSummary(),
+      },
+      {
+        id: "help",
+        label: "Keyboard shortcuts",
+        hint: "⌘⇧?",
+        group: "Help",
+        run: () => setHelpOpen(true),
+      },
+    ],
+    [
+      cancelAnalyze,
+      clearFiles,
+      loadSample,
+      loadAllSamples,
+      exportMarkdown,
+      exportJson,
+      copyShareSummary,
+      focusMode,
+    ]
+  );
+
+  const paneClass = (pane: MobilePane) =>
+    mobilePane === pane ? "flex" : "hidden lg:flex";
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <GrainOverlay />
+      <LensBackdrop active={files.length === 0 || loading} />
+      {loading && (
+        <div className="analyze-meter absolute left-0 right-0 top-0 z-30">
+          <span />
+        </div>
+      )}
+
+      <header className="app-header shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <ApertureLogo spinning={loading} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <h1 className="font-mono text-[13px] font-semibold tracking-wide text-[var(--fg)]">
+                  code-lens
+                </h1>
+                <span className="font-mono text-[10px] text-[var(--muted-2)]">
+                  optical analyzer · grok-4.5
+                </span>
+                {hasApiKey === true && (
+                  <span className="hidden font-mono text-[10px] text-[var(--ok)] sm:inline">
+                    · key ok
+                  </span>
+                )}
+                {hasApiKey === false && (
+                  <span className="font-mono text-[10px] text-[var(--danger)]">
+                    · no key
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCmdOpen(true)}
+              className="btn-secondary"
+              title="⌘K"
+            >
+              cmd
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasteOpen(true)}
+              className="btn-secondary"
+              title="⌘⇧P"
+            >
+              paste
+            </button>
+            <button
+              type="button"
+              onClick={() => setFocusMode((f) => !f)}
+              className={`btn-secondary ${focusMode ? "!border-[var(--accent-border)] !text-[var(--accent)]" : ""}`}
+            >
+              {focusMode ? "files" : "focus"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="btn-ghost"
+            >
+              ?
+            </button>
+            <span className="mx-1 hidden h-4 w-px bg-[var(--border)] sm:block" />
+            {SAMPLE_SNIPPETS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => loadSample(s, false)}
+                className="btn-secondary"
+                title={SAMPLE_META[s.id]?.blurb ?? s.path}
+              >
+                {s.language === "javascript" && "js"}
+                {s.language === "python" && "py"}
+                {s.language === "typescript" && "ts"}
+              </button>
+            ))}
+            <button type="button" onClick={loadAllSamples} className="btn-secondary">
+              all
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-2.5">
+          <TaskToggles
+            enabled={enabledTasks}
+            onChange={setEnabledTasks}
+            disabled={loading}
+          />
+          <div className="flex items-center gap-2">
+            {files.length > 0 && (
+              <button
+                type="button"
+                onClick={clearFiles}
+                className="btn-ghost text-xs"
+                disabled={loading}
+              >
+                Clear
+              </button>
+            )}
+            {loading ? (
+              <button type="button" onClick={cancelAnalyze} className="btn-secondary text-xs">
+                Cancel
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={analyze}
+              disabled={!canAnalyze}
+              className={`btn-primary btn-primary-magnetic ${loading ? "btn-primary-live" : ""}`}
+              title="⌘/Ctrl + Enter"
+            >
+              {loading ? (
+                <>
+                  <span className="spinner spinner-sm" />
+                  focusing…
+                </>
+              ) : (
+                <>
+                  focus analyze
+                  <kbd className="ml-1 hidden opacity-70 sm:inline">⌘↵</kbd>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {ingestNotes.length > 0 && (
+          <div className="border-t border-[var(--border)] bg-[var(--surface-2)]/50 px-4 py-1.5">
+            {ingestNotes.map((n, i) => (
+              <p key={i} className="text-[11px] text-[var(--accent)]">
+                {n}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <div className="flex border-t border-[var(--border)] lg:hidden">
+          {(
+            [
+              ["files", "Files"],
+              ["code", "Code"],
+              ["results", "Results"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setMobilePane(id)}
+              className={`flex-1 py-2 text-center text-xs font-medium transition ${
+                mobilePane === id
+                  ? "border-b-2 border-[var(--accent)] text-[var(--accent)]"
+                  : "text-[var(--muted)]"
+              }`}
+            >
+              {label}
+              {id === "results" && result && !loading && (
+                <span className="ml-1 inline-block h-1.5 w-1.5 bg-[var(--ok)]" />
+              )}
+              {id === "results" && loading && (
+                <span className="ml-1 inline-block h-1.5 w-1.5 animate-pulse bg-[var(--accent)]" />
+              )}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {files.length > 0 && (
+        <FocusHUD
+          target={selectedPath ?? "entire workspace"}
+          language={viewerLang}
+          enabledTasks={Array.from(enabledTasks)}
+          loading={loading}
+          hasResult={Boolean(result)}
+          lineCount={lineCount}
+        />
+      )}
+
+      <div
+        className={`relative grid min-h-0 flex-1 grid-cols-1 ${
+          focusMode
+            ? "lg:grid-cols-[1fr_minmax(340px,420px)]"
+            : "lg:grid-cols-[260px_1fr_minmax(340px,420px)]"
+        }`}
+      >
+        <LockBurst trigger={lockBurstAt} />
+        {!focusMode && (
+          <aside
+            className={`${paneClass("files")} pane-split min-h-[200px] flex-col border-b border-[var(--border)] bg-[var(--surface)] lg:min-h-0 lg:border-b-0 lg:border-r`}
+          >
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <FileTree
+                files={files}
+                selectedPath={selectedPath}
+                onSelect={(p) => {
+                  selectPath(p);
+                  setMobilePane("code");
+                }}
+              />
+            </div>
+            {history.length > 0 && (
+              <div className="shrink-0 border-t border-[var(--border)] px-2 py-2">
+                <p className="pane-title mb-1.5 px-1">recent runs</p>
+                <ul className="max-h-28 space-y-1 overflow-y-auto">
+                  {history.map((h) => {
+                    const bars = Math.max(1, Math.min(8, Math.round(h.durationMs / 800)));
+                    return (
+                      <li
+                        key={h.id}
+                        className="flex items-center gap-2 px-1.5 py-1 font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                        title={`${h.tasks.join(", ")} · ${(h.durationMs / 1000).toFixed(1)}s`}
+                      >
+                        <span className="inline-flex h-3 items-end">
+                          {Array.from({ length: bars }).map((_, i) => (
+                            <span
+                              key={i}
+                              className="history-bar"
+                              style={{ height: `${4 + i * 1.5}px` }}
+                            />
+                          ))}
+                        </span>
+                        <span className="text-[var(--accent)] tabular-nums">
+                          {(h.durationMs / 1000).toFixed(1)}s
+                        </span>
+                        <span className="min-w-0 truncate">{h.target}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            {files.length > 0 && (
+              <div className="shrink-0 border-t border-[var(--border)] p-2">
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setPasteOpen(true)}
+                    className="btn-secondary w-full justify-center text-xs"
+                  >
+                    Paste code
+                  </button>
+                </div>
+                <DropZone onFiles={handleFiles} disabled={loading} compact />
+              </div>
+            )}
+          </aside>
+        )}
+
+        <main
+          className={`${paneClass("code")} relative min-h-[280px] flex-col border-b border-[var(--border)] bg-[var(--code-bg)] lg:min-h-0 lg:border-b-0 lg:border-r`}
+        >
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              {files.length > 1 && selectedFile && (
+                <FileNav
+                  files={files}
+                  selectedPath={selectedPath}
+                  onSelect={selectPath}
+                />
+              )}
+              <span className="min-w-0 truncate font-mono text-xs text-[var(--muted)]">
+                {viewerName || "No file selected"}
+                {showingFixed && (
+                  <span className="ml-2 text-[var(--ok)]">· fixed preview</span>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {files.length > 0 && (
+                <span
+                  className={`signal-bars ${loading ? "signal-live" : ""}`}
+                  title="Signal"
+                  aria-hidden
+                >
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              )}
+              {fixedCode && selectedFile && (
+                <div className="flex border border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => setViewerMode("source")}
+                    className={`px-1.5 py-0.5 font-mono text-[10px] uppercase ${
+                      viewerMode === "source"
+                        ? "bg-[var(--accent-dim)] text-[var(--accent)]"
+                        : "text-[var(--muted)]"
+                    }`}
+                  >
+                    src
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewerMode("fixed")}
+                    className={`border-l border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] uppercase ${
+                      viewerMode === "fixed"
+                        ? "bg-[var(--ok-dim)] text-[var(--ok)]"
+                        : "text-[var(--muted)]"
+                    }`}
+                  >
+                    fix
+                  </button>
+                </div>
+              )}
+              {lineCount > 0 && selectedFile && (
+                <span className="font-mono text-[10px] text-[var(--muted-2)]">
+                  {lineCount} lines
+                </span>
+              )}
+              {selectedFile && (
+                <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted)]">
+                  {viewerLang}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="relative min-h-0 flex-1 p-2">
+            <CodeSearch
+              code={viewerCode}
+              open={findOpen && Boolean(selectedFile)}
+              onClose={() => setFindOpen(false)}
+            />
+            {files.length === 0 ? (
+              <div className="empty-workspace relative z-[1] flex h-full flex-col items-center justify-center gap-5 overflow-y-auto p-4 sm:p-6">
+                <div className="animate-fade-up text-center">
+                  <div className="hero-lens">
+                    <div className="hero-lens-ring" />
+                    <div className="hero-lens-ring hero-lens-ring-2" />
+                    <div className="hero-lens-core">CL</div>
+                  </div>
+                  <h2 className="font-mono text-[15px] font-semibold tracking-wide text-[var(--fg)]">
+                    <Typewriter text="Point the lens at your code" speed={32} />
+                  </h2>
+                  <p className="mx-auto mt-2 max-w-md text-[12px] leading-relaxed text-[var(--muted)]">
+                    Built-in defects, folder drops, or pasted snippets. Live grok-4.5 —
+                    nothing canned.
+                  </p>
+                </div>
+
+                <SampleCards onLoad={loadSample} disabled={loading} />
+
+                <div className="animate-fade-up stagger-4 flex w-full max-w-[52rem] flex-col gap-2 sm:flex-row">
+                  <div className="min-w-0 flex-1">
+                    <DropZone onFiles={handleFiles} disabled={loading} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPasteOpen(true)}
+                    className="btn-secondary shrink-0 justify-center sm:w-40"
+                  >
+                    paste code
+                  </button>
+                </div>
+
+                {/* Floating shortcut dock — empty state only */}
+                <div className="shortcut-dock">
+                  <button type="button" className="tip-chip" onClick={() => setCmdOpen(true)}>
+                    <span className="text-[var(--accent)]">⌘K</span> cmd
+                  </button>
+                  <button type="button" className="tip-chip" onClick={() => setPasteOpen(true)}>
+                    paste
+                  </button>
+                  <button
+                    type="button"
+                    className="tip-chip"
+                    onClick={() => loadSample(SAMPLE_SNIPPETS[0], true)}
+                  >
+                    <span className="text-[var(--accent)]">demo</span> js bug
+                  </button>
+                  <span className="tip-chip">
+                    <span className="text-[var(--accent)]">⌘↵</span> run
+                  </span>
+                </div>
+              </div>
+            ) : selectedFile ? (
+              <div className="view-enter relative h-full">
+                <ScanOverlay active={loading} />
+                <CodeBlock
+                  code={viewerCode}
+                  language={viewerLang}
+                  filename={showingFixed ? `${viewerName} (fixed)` : viewerName}
+                  maxHeight="100%"
+                  fontSize={fontSize}
+                  onFontSizeChange={setFontSize}
+                  showFind={findOpen}
+                  onToggleFind={() => setFindOpen((v) => !v)}
+                />
+              </div>
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3 overflow-y-auto px-6 py-8 text-center">
+                <div className="hero-lens !mb-2 !h-20 !w-20">
+                  <div className="hero-lens-ring" />
+                  <div className="hero-lens-ring hero-lens-ring-2" />
+                  <div className="hero-lens-core !inset-5 !text-[10px]">∗</div>
+                </div>
+                <p className="font-mono text-[12px] text-[var(--fg)]">
+                  wide-field mode · {files.length} files
+                </p>
+                <p className="max-w-sm text-[11px] text-[var(--muted)]">
+                  Analyze sends the full workspace to grok-4.5. Click a tile to
+                  narrow focus.
+                </p>
+                <div className="workspace-mosaic mt-2">
+                  {files.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => selectPath(f.path)}
+                      className="workspace-tile"
+                    >
+                      <span className="block font-mono text-[10px] uppercase text-[var(--accent)]">
+                        {f.language.slice(0, 3)}
+                      </span>
+                      <span className="mt-1 block truncate font-mono text-[11px] text-[var(--fg)]">
+                        {f.name}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[10px] text-[var(--muted-2)]">
+                        {f.path}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={analyze}
+                  disabled={!canAnalyze}
+                  className="btn-primary mt-2"
+                >
+                  focus analyze all
+                </button>
+              </div>
+            )}
+          </div>
+        </main>
+
+        <aside
+          className={`${paneClass("results")} min-h-[320px] flex-col border-l border-[var(--border)] bg-[var(--bg)] lg:min-h-0 ${
+            result && !loading ? "results-flash" : ""
+          }`}
+        >
+          <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+            <span className="pane-title">analysis</span>
+            <div className="flex min-w-0 items-center gap-2">
+              {result && !loading && (
+                <span className="lock-badge">
+                  <span className="status-dot status-dot-ok" />
+                  locked
+                </span>
+              )}
+              {result && !loading && (
+                <button
+                  type="button"
+                  onClick={() => void copyShareSummary()}
+                  className="btn-ghost !px-1.5 !py-0.5"
+                >
+                  share
+                </button>
+              )}
+              {lastTarget && result && !loading && (
+                <span className="path-ticker max-w-[9rem] font-mono text-[10px] text-[var(--muted-2)]">
+                  <span className="path-ticker-inner">
+                    {lastTarget}&nbsp;&nbsp;·&nbsp;&nbsp;{lastTarget}
+                  </span>
+                </span>
+              )}
+              {loading && (
+                <span className="font-mono text-[10px] text-[var(--accent)]">
+                  focusing…
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="min-h-0 flex-1">
+            <ResultsPanel
+              loading={loading}
+              error={error}
+              parseError={parseError}
+              rawText={rawText}
+              result={result}
+              enabledTasks={Array.from(enabledTasks)}
+              language={
+                viewerLang !== "text"
+                  ? viewerLang
+                  : selectedFile?.language ?? "javascript"
+              }
+              originalCode={selectedFile?.content ?? ""}
+              sourceStats={sourceStats}
+              durationMs={durationMs}
+              elapsedMs={elapsedMs}
+              hasFiles={files.length > 0}
+              onApplyFix={applyFix}
+              onAddTests={addTestsAsFile}
+              onExportMarkdown={result ? exportMarkdown : undefined}
+              onExportJson={result ? exportJson : undefined}
+              onRetry={
+                canAnalyze || (files.length > 0 && enabledTasks.size > 0)
+                  ? analyze
+                  : undefined
+              }
+              onCancel={loading ? cancelAnalyze : undefined}
+              onAnalyze={canAnalyze ? analyze : undefined}
+            />
+          </div>
+        </aside>
+      </div>
+
+      <StatusBar
+        fileCount={files.length}
+        totalBytes={totalBytes}
+        language={viewerLang}
+        lineCount={lineCount}
+        loading={loading}
+        durationMs={durationMs}
+        elapsedMs={elapsedMs}
+        lastTarget={lastTarget}
+        hasResult={Boolean(result)}
+        hasApiKey={hasApiKey}
+        sourceStats={sourceStats}
+      />
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+      <PasteModal
+        open={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        onSubmit={addPastedFile}
+      />
+      <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <CommandPalette
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        commands={commands}
+      />
+    </div>
+  );
+}
