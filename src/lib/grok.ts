@@ -5,6 +5,8 @@
 
 import "server-only";
 
+import type { AnalysisDepth } from "./types";
+
 const XAI_RESPONSES_URL = "https://api.x.ai/v1/responses";
 const MODEL = "grok-4.5";
 
@@ -66,8 +68,12 @@ export function extractOutputText(data: ResponsesApiBody): string {
   return parts.join("\n");
 }
 
-export async function callGrok(input: string): Promise<string> {
+export async function callGrok(
+  input: string,
+  opts?: { temperature?: number }
+): Promise<string> {
   const apiKey = getApiKey();
+  const temperature = opts?.temperature ?? 0.2;
 
   const res = await fetch(XAI_RESPONSES_URL, {
     method: "POST",
@@ -78,8 +84,7 @@ export async function callGrok(input: string): Promise<string> {
     body: JSON.stringify({
       model: MODEL,
       input,
-      // Prefer deterministic structured JSON for analysis
-      temperature: 0.2,
+      temperature,
     }),
   });
 
@@ -112,48 +117,110 @@ export async function callGrok(input: string): Promise<string> {
   return text;
 }
 
+const FINDING_SCHEMA = `{
+  "title": string,
+  "detail": string,
+  "severity": "critical" | "high" | "medium" | "low" | "info",
+  "line": number | omit if unknown (1-based),
+  "endLine": number | omit,
+  "category": string,
+  "suggestion": string,
+  "ruleId": string | omit (e.g. CWE-79, OWASP A03)
+}`;
+
 export function buildAnalysisPrompt(opts: {
   language: string;
   filename: string;
   code: string;
   tasks: string[];
   multiFileContext?: string;
+  depth?: AnalysisDepth;
 }): string {
   const taskSet = new Set(opts.tasks);
+  const depth = opts.depth ?? "standard";
+  const deep = depth === "deep";
 
   const want: string[] = [];
   if (taskSet.has("explain")) {
-    want.push(`- "explanation": string — plain-English explanation of what the code does`);
+    want.push(
+      deep
+        ? `- "explanation": string — thorough walkthrough: purpose, control flow, data flow, edge cases, public API contracts`
+        : `- "explanation": string — plain-English explanation of what the code does`
+    );
   }
   if (taskSet.has("fix_bugs")) {
     want.push(
-      `- "bug_fixes": object with "summary" (string), "issues" (string array of bugs + why wrong), "fixed_code" (full corrected source)`
+      `- "bug_fixes": object with:
+    - "summary": string
+    - "issues": string array (short human labels)
+    - "structured_issues": array of finding objects ${FINDING_SCHEMA}
+    - "fixed_code": full corrected source as one string
+  Prefer real defects (logic, nulls, races, off-by-ones, resource leaks). Include line numbers when possible.`
     );
   }
   if (taskSet.has("generate_tests")) {
     want.push(
-      `- "tests": object with "framework" (string) and "code" (full unit test source)`
+      deep
+        ? `- "tests": object with "framework" (string), "code" (full unit test source covering happy path, edges, error paths, and regressions for any bugs found), "coverage_notes" (string array of what each group covers)`
+        : `- "tests": object with "framework" (string), "code" (full unit test source), optional "coverage_notes" (string array)`
     );
   }
   if (taskSet.has("suggest_improvements")) {
     want.push(
-      `- "improvements": string array of actionable refactors / quality / performance suggestions`
+      `- "improvements": string array of actionable refactors / quality / performance suggestions (prioritize high-impact first)`
     );
   }
+  if (taskSet.has("security_audit")) {
+    want.push(
+      `- "security": object with:
+    - "summary": string
+    - "risk_level": "critical" | "high" | "medium" | "low" | "info"
+    - "findings": array of finding objects ${FINDING_SCHEMA}
+  Cover injection, XSS, authz, secrets, unsafe deserialization, path traversal, crypto misuse, SSRF, etc. Only report plausible issues for this language/stack.`
+    );
+  }
+  if (taskSet.has("architecture")) {
+    want.push(
+      `- "architecture": object with:
+    - "summary": string
+    - "coupling": "low" | "medium" | "high"
+    - "cohesion": "low" | "medium" | "high"
+    - "hotspots": array of finding objects (complexity / module boundaries / smells, with line when possible)
+    - "recommendations": string array of structural improvements`
+    );
+  }
+
+  // Always ask for quality dimensions when multiple advanced tasks run
+  const wantQuality =
+    deep ||
+    taskSet.has("security_audit") ||
+    taskSet.has("architecture") ||
+    taskSet.size >= 3;
+  if (wantQuality) {
+    want.push(
+      `- "quality": object with optional 0–100 scores: "correctness", "security", "maintainability", "testability", "complexity" (higher complexity score = worse / more complex)`
+    );
+  }
+
+  const depthBlock = deep
+    ? `\nAnalysis depth: DEEP — be exhaustive. Cite line numbers aggressively. Prefer false negatives over vague filler. If no issues exist, say so clearly with empty arrays.\n`
+    : `\nAnalysis depth: STANDARD — precise and actionable, not verbose.\n`;
 
   const contextBlock = opts.multiFileContext
     ? `\nAdditional codebase context (other files, may be truncated):\n\`\`\`\n${opts.multiFileContext}\n\`\`\`\n`
     : "";
 
-  return `You are Code Lens, an expert software engineer analyzing source code.
+  return `You are Code Lens, a senior staff engineer performing production-grade static analysis.
 
 CRITICAL OUTPUT RULES:
 - Return STRICT JSON only.
 - No markdown fences.
 - No prose before or after the JSON.
 - Escape newlines and quotes inside string values correctly.
-- Only include keys for the tasks that were requested.
+- Only include keys for the tasks that were requested (plus "quality" when requested above).
 - For fixed_code and tests.code, return the complete source as a single JSON string.
+- Line numbers are 1-based and refer to the primary source below.
+- severity must be one of: critical, high, medium, low, info.
 
 Use exactly these keys when requested:
 {
@@ -161,7 +228,7 @@ ${want.join(",\n")}
 }
 
 Tasks requested: ${opts.tasks.join(", ")}
-
+${depthBlock}
 Primary file: ${opts.filename}
 Language: ${opts.language}
 ${contextBlock}

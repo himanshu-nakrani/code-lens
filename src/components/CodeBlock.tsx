@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { toPrismLanguage } from "@/lib/languages";
 import { downloadText } from "@/lib/export";
+import type { Finding, Severity } from "@/lib/types";
+import { findingsWithLines, sortBySeverity } from "@/lib/findings";
+
+export type LineAnnotation = {
+  line: number;
+  severity: Severity;
+  title: string;
+};
 
 interface CodeBlockProps {
   code: string;
@@ -17,12 +25,25 @@ interface CodeBlockProps {
   onFontSizeChange?: (n: number) => void;
   showFind?: boolean;
   onToggleFind?: () => void;
+  /** Structured findings to mark in the gutter */
+  annotations?: Finding[];
+  /** Scroll/highlight this 1-based line */
+  highlightLine?: number | null;
+  onAnnotationClick?: (line: number) => void;
 }
 
 const toolBtn =
   "border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--muted)] transition hover:border-[var(--border-bright)] hover:text-[var(--fg)]";
 const toolBtnOn =
   "border border-[var(--accent-border)] bg-[var(--accent-dim)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--accent)]";
+
+const SEV_GUTTER: Record<Severity, string> = {
+  critical: "gutter-critical",
+  high: "gutter-high",
+  medium: "gutter-medium",
+  low: "gutter-low",
+  info: "gutter-info",
+};
 
 export function CodeBlock({
   code,
@@ -35,9 +56,62 @@ export function CodeBlock({
   onFontSizeChange,
   showFind,
   onToggleFind,
+  annotations = [],
+  highlightLine = null,
+  onAnnotationClick,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const [wrap, setWrap] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const byLine = useMemo(() => {
+    const map = new Map<number, Finding[]>();
+    for (const f of findingsWithLines(annotations)) {
+      const list = map.get(f.line!) ?? [];
+      list.push(f);
+      map.set(f.line!, list);
+    }
+    return map;
+  }, [annotations]);
+
+  const lineProps = useCallback(
+    (lineNumber: number) => {
+      const hits = byLine.get(lineNumber);
+      const isHi = highlightLine === lineNumber;
+      const worst = hits?.length
+        ? sortBySeverity(hits)[0].severity
+        : null;
+      const classes = [
+        "code-line",
+        isHi ? "code-line-highlight" : "",
+        worst ? `code-line-finding ${SEV_GUTTER[worst]}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return {
+        className: classes,
+        "data-line": lineNumber,
+        title: hits?.map((h) => `[${h.severity}] ${h.title}`).join("\n"),
+        onClick: hits?.length
+          ? () => onAnnotationClick?.(lineNumber)
+          : undefined,
+        style: hits?.length ? { cursor: "pointer" } : undefined,
+      };
+    },
+    [byLine, highlightLine, onAnnotationClick]
+  );
+
+  // Scroll highlighted line into view
+  useEffect(() => {
+    if (highlightLine == null || !scrollRef.current) return;
+    const el = scrollRef.current.querySelector(
+      `[data-line="${highlightLine}"]`
+    ) as HTMLElement | null;
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [highlightLine, code]);
 
   const onCopy = useCallback(async () => {
     try {
@@ -66,6 +140,7 @@ export function CodeBlock({
 
   const prismLang = toPrismLanguage(language);
   const lines = code ? code.split("\n").length : 0;
+  const annCount = byLine.size;
 
   return (
     <div className="code-block code-block-focus group relative flex h-full min-h-0 flex-col overflow-hidden border border-[var(--border)] bg-[var(--code-bg)]">
@@ -74,6 +149,11 @@ export function CodeBlock({
           {filename ? filename : prismLang}
           {lines > 0 && (
             <span className="ml-2 text-[var(--muted-2)]">{lines}L</span>
+          )}
+          {annCount > 0 && (
+            <span className="ml-2 text-[var(--danger)]">
+              {annCount} marked
+            </span>
           )}
         </span>
         <div className="flex shrink-0 items-center gap-0.5">
@@ -123,12 +203,18 @@ export function CodeBlock({
           </button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto" style={{ maxHeight }}>
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-auto"
+        style={{ maxHeight }}
+      >
         <SyntaxHighlighter
           language={prismLang}
           style={oneDark}
           showLineNumbers={showLineNumbers}
+          wrapLines
           wrapLongLines={wrap}
+          lineProps={lineProps}
           customStyle={{
             margin: 0,
             padding: "10px 0",

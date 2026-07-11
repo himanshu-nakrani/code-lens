@@ -48,10 +48,14 @@ export async function POST(req: NextRequest) {
     code: validated.code,
     tasks: validated.tasks,
     multiFileContext: validated.multiFileContext,
+    depth: validated.depth,
   });
 
   try {
-    const rawText = await callGrok(prompt);
+    // Slightly higher temperature in deep mode for broader exploration
+    const rawText = await callGrok(prompt, {
+      temperature: validated.depth === "deep" ? 0.35 : 0.2,
+    });
     const parsed = parseAnalysisJson(rawText);
 
     if (!parsed.ok) {

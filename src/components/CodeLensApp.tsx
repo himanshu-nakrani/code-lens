@@ -31,12 +31,18 @@ import {
   loadWorkspace,
   saveWorkspace,
 } from "@/lib/workspace";
+import {
+  collectAllFindings,
+  findingsWithLines,
+} from "@/lib/findings";
 import type {
+  AnalysisDepth,
   AnalysisResult,
   AnalyzeResponse,
   CodeFile,
   TaskId,
 } from "@/lib/types";
+import { ALL_TASKS } from "@/lib/types";
 
 const DEFAULT_TASKS: TaskId[] = [
   "explain",
@@ -45,7 +51,10 @@ const DEFAULT_TASKS: TaskId[] = [
   "suggest_improvements",
 ];
 
+const VALID_TASK_IDS = new Set(ALL_TASKS.map((t) => t.id));
+
 const TASKS_STORAGE_KEY = "code-lens-tasks";
+const DEPTH_STORAGE_KEY = "code-lens-depth";
 
 type MobilePane = "files" | "code" | "results";
 type ViewerMode = "source" | "fixed";
@@ -56,13 +65,21 @@ function loadStoredTasks(): Set<TaskId> | null {
     const raw = localStorage.getItem(TASKS_STORAGE_KEY);
     if (!raw) return null;
     const arr = JSON.parse(raw) as string[];
-    const valid = arr.filter((t): t is TaskId =>
-      DEFAULT_TASKS.includes(t as TaskId)
-    );
+    const valid = arr.filter((t): t is TaskId => VALID_TASK_IDS.has(t as TaskId));
     return valid.length ? new Set(valid) : null;
   } catch {
     return null;
   }
+}
+
+function loadStoredDepth(): AnalysisDepth {
+  try {
+    const raw = localStorage.getItem(DEPTH_STORAGE_KEY);
+    if (raw === "deep" || raw === "standard") return raw;
+  } catch {
+    /* ignore */
+  }
+  return "standard";
 }
 
 export function CodeLensApp() {
@@ -96,6 +113,8 @@ export function CodeLensApp() {
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [lockBurstAt, setLockBurstAt] = useState<number | null>(null);
+  const [depth, setDepth] = useState<AnalysisDepth>("standard");
+  const [highlightLine, setHighlightLine] = useState<number | null>(null);
   const toastId = useRef(0);
   const analyzeRef = useRef<() => void>(() => {});
   const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
@@ -123,6 +142,7 @@ export function CodeLensApp() {
       const stored = loadStoredTasks();
       if (stored) setEnabledTasks(stored);
     }
+    setDepth(loadStoredDepth());
     setHydrated(true);
   }, []);
 
@@ -185,9 +205,35 @@ export function CodeLensApp() {
     }
   }, [enabledTasks, hydrated]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(DEPTH_STORAGE_KEY, depth);
+    } catch {
+      /* ignore */
+    }
+  }, [depth, hydrated]);
+
+  const annotations = useMemo(
+    () => (result && !showingFixed ? collectAllFindings(result) : []),
+    [result, showingFixed]
+  );
+  const markedLines = useMemo(
+    () => findingsWithLines(annotations).length,
+    [annotations]
+  );
+
   const selectPath = useCallback((path: string | null) => {
     setSelectedPath(path);
     setViewerMode("source");
+    setFindOpen(false);
+    setHighlightLine(null);
+  }, []);
+
+  const jumpToLine = useCallback((line: number) => {
+    setHighlightLine(line);
+    setViewerMode("source");
+    setMobilePane("code");
     setFindOpen(false);
   }, []);
 
@@ -330,7 +376,12 @@ export function CodeLensApp() {
   }, [pushToast]);
 
   const analyzeWith = useCallback(
-    async (fileList: CodeFile[], path: string | null, tasks: Set<TaskId>) => {
+    async (
+      fileList: CodeFile[],
+      path: string | null,
+      tasks: Set<TaskId>,
+      analysisDepth: AnalysisDepth = depth
+    ) => {
       if (fileList.length === 0) {
         setError("Load a file, folder, or sample first.");
         return;
@@ -352,6 +403,7 @@ export function CodeLensApp() {
       setResult(null);
       setViewerMode("source");
       setFindOpen(false);
+      setHighlightLine(null);
       const target = path ?? "entire codebase";
       setLastTarget(target);
       setMobilePane("results");
@@ -367,6 +419,7 @@ export function CodeLensApp() {
           })),
           selectedPath: path,
           tasks: Array.from(tasks),
+          depth: analysisDepth,
         };
 
         const res = await fetch("/api/analyze", {
@@ -415,7 +468,13 @@ export function CodeLensApp() {
             ...h,
           ].slice(0, 8)
         );
-        pushToast("success", `Focus locked · ${(took / 1000).toFixed(1)}s`);
+        const findingCount = collectAllFindings(data.result).length;
+        pushToast(
+          "success",
+          findingCount
+            ? `Focus locked · ${findingCount} finding${findingCount === 1 ? "" : "s"} · ${(took / 1000).toFixed(1)}s`
+            : `Focus locked · ${(took / 1000).toFixed(1)}s`
+        );
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") {
           return;
@@ -433,12 +492,12 @@ export function CodeLensApp() {
         }
       }
     },
-    [pushToast]
+    [pushToast, depth]
   );
 
   const analyze = useCallback(() => {
-    void analyzeWith(files, selectedPath, enabledTasks);
-  }, [analyzeWith, files, selectedPath, enabledTasks]);
+    void analyzeWith(files, selectedPath, enabledTasks, depth);
+  }, [analyzeWith, files, selectedPath, enabledTasks, depth]);
 
   useEffect(() => {
     analyzeRef.current = analyze;
@@ -518,11 +577,12 @@ export function CodeLensApp() {
       language: viewerLang,
       tasks: Array.from(enabledTasks),
       durationMs: durationMs ?? undefined,
+      depth,
     });
     const safe = (lastTarget ?? "analysis").replace(/[^\w.-]+/g, "_");
     downloadText(`code-lens-${safe}.md`, md, "text/markdown");
     pushToast("success", "Exported Markdown");
-  }, [result, lastTarget, viewerName, viewerLang, enabledTasks, durationMs, pushToast]);
+  }, [result, lastTarget, viewerName, viewerLang, enabledTasks, durationMs, depth, pushToast]);
 
   const exportJson = useCallback(() => {
     if (!result) return;
@@ -534,6 +594,7 @@ export function CodeLensApp() {
           target: lastTarget,
           language: viewerLang,
           tasks: Array.from(enabledTasks),
+          depth,
           durationMs,
           result,
         },
@@ -543,28 +604,32 @@ export function CodeLensApp() {
       "application/json"
     );
     pushToast("success", "Exported JSON");
-  }, [result, lastTarget, viewerLang, enabledTasks, durationMs, pushToast]);
+  }, [result, lastTarget, viewerLang, enabledTasks, depth, durationMs, pushToast]);
 
   const copyShareSummary = useCallback(async () => {
     if (!result) {
       pushToast("error", "No analysis to share");
       return;
     }
-    const issues = result.bug_fixes?.issues?.length ?? 0;
+    const findings = collectAllFindings(result);
     const tips = result.improvements?.length ?? 0;
     const text = [
       `Code Lens · ${lastTarget ?? viewerName}`,
-      `Model: grok-4.5 · ${durationMs != null ? (durationMs / 1000).toFixed(1) + "s" : "n/a"}`,
+      `Model: grok-4.5 · depth ${depth} · ${durationMs != null ? (durationMs / 1000).toFixed(1) + "s" : "n/a"}`,
       result.explanation ? `Explain: ${result.explanation.slice(0, 200)}…` : null,
-      issues ? `Bugs: ${issues}` : null,
+      findings.length ? `Findings: ${findings.length}` : null,
+      result.security ? `Security risk: ${result.security.risk_level}` : null,
       result.tests ? `Tests: ${result.tests.framework}` : null,
       tips ? `Improvements: ${tips}` : null,
+      result.architecture
+        ? `Arch: coupling ${result.architecture.coupling} / cohesion ${result.architecture.cohesion}`
+        : null,
     ]
       .filter(Boolean)
       .join("\n");
     await navigator.clipboard.writeText(text);
     pushToast("success", "Summary copied to clipboard");
-  }, [result, lastTarget, viewerName, durationMs, pushToast]);
+  }, [result, lastTarget, viewerName, durationMs, depth, pushToast]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -612,17 +677,10 @@ export function CodeLensApp() {
       // Number keys: samples when empty; [ ] file nav; 1-3 panes when loaded
       if (!inInput && !meta && !e.altKey && !pasteOpen && !cmdOpen) {
         if (files.length === 0) {
-          if (e.key === "1") {
+          const sampleIdx = parseInt(e.key, 10) - 1;
+          if (sampleIdx >= 0 && sampleIdx < SAMPLE_SNIPPETS.length && e.key.length === 1) {
             e.preventDefault();
-            loadSample(SAMPLE_SNIPPETS[0], true);
-          }
-          if (e.key === "2") {
-            e.preventDefault();
-            loadSample(SAMPLE_SNIPPETS[1], true);
-          }
-          if (e.key === "3") {
-            e.preventDefault();
-            loadSample(SAMPLE_SNIPPETS[2], true);
+            loadSample(SAMPLE_SNIPPETS[sampleIdx], true);
           }
         } else {
           if (e.key === "1") setMobilePane("files");
@@ -656,6 +714,12 @@ export function CodeLensApp() {
         hint: "⌘↵",
         group: "Analysis",
         run: () => analyzeRef.current(),
+      },
+      {
+        id: "depth",
+        label: depth === "deep" ? "Switch to standard depth" : "Switch to deep depth",
+        group: "Analysis",
+        run: () => setDepth((d) => (d === "deep" ? "standard" : "deep")),
       },
       {
         id: "cancel",
@@ -745,6 +809,7 @@ export function CodeLensApp() {
       exportJson,
       copyShareSummary,
       focusMode,
+      depth,
     ]
   );
 
@@ -827,9 +892,15 @@ export function CodeLensApp() {
                 className="btn-secondary"
                 title={SAMPLE_META[s.id]?.blurb ?? s.path}
               >
-                {s.language === "javascript" && "js"}
-                {s.language === "python" && "py"}
-                {s.language === "typescript" && "ts"}
+                {s.id.includes("sec")
+                  ? "sec"
+                  : s.language === "javascript"
+                    ? "js"
+                    : s.language === "python"
+                      ? "py"
+                      : s.language === "typescript"
+                        ? "ts"
+                        : s.language.slice(0, 3)}
               </button>
             ))}
             <button type="button" onClick={loadAllSamples} className="btn-secondary">
@@ -842,6 +913,8 @@ export function CodeLensApp() {
           <TaskToggles
             enabled={enabledTasks}
             onChange={setEnabledTasks}
+            depth={depth}
+            onDepthChange={setDepth}
             disabled={loading}
           />
           <div className="flex items-center gap-2">
@@ -1066,6 +1139,11 @@ export function CodeLensApp() {
                   {lineCount} lines
                 </span>
               )}
+              {markedLines > 0 && !showingFixed && (
+                <span className="font-mono text-[10px] text-[var(--danger)]">
+                  {markedLines} marked
+                </span>
+              )}
               {selectedFile && (
                 <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted)]">
                   {viewerLang}
@@ -1091,8 +1169,8 @@ export function CodeLensApp() {
                     <Typewriter text="Point the lens at your code" speed={32} />
                   </h2>
                   <p className="mx-auto mt-2 max-w-md text-[12px] leading-relaxed text-[var(--muted)]">
-                    Built-in defects, folder drops, or pasted snippets. Live grok-4.5 —
-                    nothing canned.
+                    Six lenses · severity findings · line annotations · deep mode.
+                    Live grok-4.5 — nothing canned.
                   </p>
                 </div>
 
@@ -1143,6 +1221,9 @@ export function CodeLensApp() {
                   onFontSizeChange={setFontSize}
                   showFind={findOpen}
                   onToggleFind={() => setFindOpen((v) => !v)}
+                  annotations={showingFixed ? [] : annotations}
+                  highlightLine={showingFixed ? null : highlightLine}
+                  onAnnotationClick={jumpToLine}
                 />
               </div>
             ) : (
@@ -1247,6 +1328,7 @@ export function CodeLensApp() {
               durationMs={durationMs}
               elapsedMs={elapsedMs}
               hasFiles={files.length > 0}
+              depth={depth}
               onApplyFix={applyFix}
               onAddTests={addTestsAsFile}
               onExportMarkdown={result ? exportMarkdown : undefined}
@@ -1258,6 +1340,7 @@ export function CodeLensApp() {
               }
               onCancel={loading ? cancelAnalyze : undefined}
               onAnalyze={canAnalyze ? analyze : undefined}
+              onJumpToLine={jumpToLine}
             />
           </div>
         </aside>

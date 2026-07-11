@@ -6,11 +6,13 @@ import { DiffView } from "./DiffView";
 import { Scorecard } from "./Scorecard";
 import { FocusingPanel } from "./FocusingPanel";
 import { ReadyPanel } from "./ReadyPanel";
+import { FindingList } from "./FindingList";
 import type { AnalysisResult, TaskId } from "@/lib/types";
 import { ALL_TASKS } from "@/lib/types";
 import type { CodeStats } from "@/lib/stats";
 import { buildScorecard } from "@/lib/stats";
 import { CountUp } from "./CountUp";
+import { collectAllFindings, countBySeverity } from "@/lib/findings";
 
 interface ResultsPanelProps {
   loading: boolean;
@@ -25,6 +27,7 @@ interface ResultsPanelProps {
   durationMs?: number | null;
   elapsedMs?: number;
   hasFiles?: boolean;
+  depth?: string;
   onApplyFix?: (code: string) => void;
   onAddTests?: (code: string, framework: string) => void;
   onExportMarkdown?: () => void;
@@ -32,6 +35,7 @@ interface ResultsPanelProps {
   onRetry?: () => void;
   onCancel?: () => void;
   onAnalyze?: () => void;
+  onJumpToLine?: (line: number) => void;
 }
 
 export function ResultsPanel({
@@ -47,6 +51,7 @@ export function ResultsPanel({
   durationMs,
   elapsedMs = 0,
   hasFiles = false,
+  depth,
   onApplyFix,
   onAddTests,
   onExportMarkdown,
@@ -54,6 +59,7 @@ export function ResultsPanel({
   onRetry,
   onCancel,
   onAnalyze,
+  onJumpToLine,
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<"all" | TaskId>("all");
   const [stepIdx, setStepIdx] = useState(0);
@@ -79,11 +85,19 @@ export function ResultsPanel({
 
   const stats = useMemo(() => {
     if (!result) return null;
+    const findings = collectAllFindings(result);
     return {
-      issues: result.bug_fixes?.issues?.length ?? 0,
+      issues:
+        result.bug_fixes?.structured_issues?.length ??
+        result.bug_fixes?.issues?.length ??
+        0,
       improvements: result.improvements?.length ?? 0,
       hasFix: Boolean(result.bug_fixes?.fixed_code),
       hasTests: Boolean(result.tests?.code),
+      security: result.security?.findings?.length ?? 0,
+      hotspots: result.architecture?.hotspots?.length ?? 0,
+      findings: findings.length,
+      severityCounts: countBySeverity(findings),
     };
   }, [result]);
 
@@ -160,7 +174,7 @@ export function ResultsPanel({
     { id: "all", label: "All" },
     ...enabledTasks.map((id) => ({
       id,
-      label: ALL_TASKS.find((t) => t.id === id)?.label ?? id,
+      label: ALL_TASKS.find((t) => t.id === id)?.shortLabel ?? id,
     })),
   ];
 
@@ -174,14 +188,19 @@ export function ResultsPanel({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--muted)]">
           {stats && (
             <>
-              {stats.issues > 0 && (
+              {stats.findings > 0 && (
                 <span className="text-[var(--danger)]">
-                  <CountUp value={stats.issues} /> issue
-                  {stats.issues === 1 ? "" : "s"}
+                  <CountUp value={stats.findings} /> finding
+                  {stats.findings === 1 ? "" : "s"}
                 </span>
               )}
               {stats.hasFix && <span className="text-[var(--danger)]">fix</span>}
               {stats.hasTests && <span className="text-[var(--accent)]">tests</span>}
+              {stats.security > 0 && (
+                <span className="text-[var(--warn)]">
+                  {stats.security} sec
+                </span>
+              )}
               {stats.improvements > 0 && (
                 <span className="text-[var(--ok)]">
                   <CountUp value={stats.improvements} /> tips
@@ -189,6 +208,9 @@ export function ResultsPanel({
               )}
               {durationMs != null && (
                 <span className="tabular-nums">{(durationMs / 1000).toFixed(1)}s</span>
+              )}
+              {depth === "deep" && (
+                <span className="text-[var(--warn)]">deep</span>
               )}
             </>
           )}
@@ -233,6 +255,8 @@ export function ResultsPanel({
               grade={scorecard.grade}
               notes={scorecard.notes}
               stats={sourceStats}
+              dimensions={scorecard.dimensions}
+              severityCounts={scorecard.severityCounts}
             />
           </div>
         )}
@@ -245,6 +269,7 @@ export function ResultsPanel({
               originalCode={originalCode}
               onApplyFix={onApplyFix}
               onAddTests={onAddTests}
+              onJumpToLine={onJumpToLine}
             />
           </div>
         ))}
@@ -260,6 +285,7 @@ function TaskResultCard({
   originalCode,
   onApplyFix,
   onAddTests,
+  onJumpToLine,
 }: {
   taskId: TaskId;
   result: AnalysisResult;
@@ -267,6 +293,7 @@ function TaskResultCard({
   originalCode: string;
   onApplyFix?: (code: string) => void;
   onAddTests?: (code: string, framework: string) => void;
+  onJumpToLine?: (line: number) => void;
 }) {
   const [fixView, setFixView] = useState<"code" | "diff">("code");
   const meta = ALL_TASKS.find((t) => t.id === taskId);
@@ -287,6 +314,7 @@ function TaskResultCard({
     if (result.bug_fixes == null) return <MissingCard label={label} />;
     const bf = result.bug_fixes;
     const showDiff = Boolean(bf.fixed_code && originalCode);
+    const structured = bf.structured_issues;
     return (
       <PanelShell
         title={label}
@@ -335,7 +363,11 @@ function TaskResultCard({
         {bf.summary && (
           <p className="mb-2 text-sm font-medium text-[var(--fg)]">{bf.summary}</p>
         )}
-        {bf.issues?.length > 0 && (
+        {structured?.length ? (
+          <div className="mb-3">
+            <FindingList findings={structured} onJumpToLine={onJumpToLine} />
+          </div>
+        ) : bf.issues?.length > 0 ? (
           <ul className="mb-3 space-y-1.5">
             {bf.issues.map((issue, i) => (
               <li
@@ -350,7 +382,7 @@ function TaskResultCard({
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
         {bf.fixed_code && fixView === "diff" && originalCode ? (
           <DiffView before={originalCode} after={bf.fixed_code} maxHeight="360px" />
         ) : bf.fixed_code ? (
@@ -387,6 +419,18 @@ function TaskResultCard({
           ) : undefined
         }
       >
+        {t.coverage_notes?.length ? (
+          <ul className="mb-3 space-y-1">
+            {t.coverage_notes.map((n, i) => (
+              <li
+                key={i}
+                className="font-mono text-[11px] text-[var(--muted)] before:mr-1.5 before:text-[var(--accent)] before:content-['▸']"
+              >
+                {n}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {t.code && (
           <CodeBlock
             code={t.code}
@@ -428,7 +472,107 @@ function TaskResultCard({
     );
   }
 
+  if (taskId === "security_audit") {
+    if (result.security == null) return <MissingCard label={label} />;
+    const s = result.security;
+    return (
+      <PanelShell
+        title={label}
+        accent="danger"
+        badge={s.risk_level}
+      >
+        {s.summary && (
+          <p className="mb-3 text-sm font-medium text-[var(--fg)]">{s.summary}</p>
+        )}
+        <FindingList
+          findings={s.findings}
+          onJumpToLine={onJumpToLine}
+          emptyLabel="No security issues identified."
+        />
+      </PanelShell>
+    );
+  }
+
+  if (taskId === "architecture") {
+    if (result.architecture == null) return <MissingCard label={label} />;
+    const a = result.architecture;
+    return (
+      <PanelShell title={label} accent="info">
+        {a.summary && (
+          <p className="mb-3 text-sm leading-relaxed text-[var(--fg-dim)]">{a.summary}</p>
+        )}
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <ArchMetric label="coupling" value={a.coupling} />
+          <ArchMetric label="cohesion" value={a.cohesion} />
+        </div>
+        {a.hotspots?.length > 0 && (
+          <div className="mb-3">
+            <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted-2)]">
+              hotspots
+            </p>
+            <FindingList findings={a.hotspots} onJumpToLine={onJumpToLine} />
+          </div>
+        )}
+        {a.recommendations?.length > 0 && (
+          <div>
+            <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted-2)]">
+              recommendations
+            </p>
+            <ol className="space-y-1.5">
+              {a.recommendations.map((r, i) => (
+                <li
+                  key={i}
+                  className="tip-card flex gap-2 border border-[var(--border)] bg-[var(--code-bg)] px-2.5 py-2 text-xs leading-relaxed text-[var(--fg-dim)]"
+                >
+                  <span className="font-mono text-[10px] text-[var(--accent)]">
+                    {i + 1}
+                  </span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </PanelShell>
+    );
+  }
+
   return null;
+}
+
+function ArchMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: "low" | "medium" | "high";
+}) {
+  const tone =
+    label === "cohesion"
+      ? value === "high"
+        ? "ok"
+        : value === "medium"
+          ? "warn"
+          : "danger"
+      : value === "low"
+        ? "ok"
+        : value === "medium"
+          ? "warn"
+          : "danger";
+  const color =
+    tone === "ok"
+      ? "text-[var(--ok)] border-[var(--ok)]/30"
+      : tone === "warn"
+        ? "text-[var(--warn)] border-[var(--warn)]/30"
+        : "text-[var(--danger)] border-[var(--danger)]/30";
+  return (
+    <div className={`border bg-[var(--code-bg)] px-2.5 py-2 ${color}`}>
+      <div className="font-mono text-[9px] uppercase tracking-wide text-[var(--muted-2)]">
+        {label}
+      </div>
+      <div className="mt-0.5 font-mono text-[12px] font-semibold uppercase">{value}</div>
+    </div>
+  );
 }
 
 function MissingCard({ label }: { label: string }) {
@@ -470,7 +614,7 @@ function PanelShell({
         </h3>
         <div className="flex items-center gap-1.5">
           {badge && (
-            <span className="border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted)]">
+            <span className="border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted)]">
               {badge}
             </span>
           )}

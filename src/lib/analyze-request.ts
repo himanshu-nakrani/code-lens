@@ -3,17 +3,23 @@
  * Free of I/O so unit tests call the shipped implementation directly.
  */
 
-import type { AnalyzeRequest, TaskId } from "./types";
+import type { AnalysisDepth, AnalyzeRequest, TaskId } from "./types";
 
 export const VALID_TASKS: TaskId[] = [
   "explain",
   "fix_bugs",
   "generate_tests",
   "suggest_improvements",
+  "security_audit",
+  "architecture",
 ];
+
+export const VALID_DEPTHS: AnalysisDepth[] = ["standard", "deep"];
 
 export const MAX_CODE_CHARS = 100_000;
 export const MAX_CONTEXT_CHARS = 40_000;
+/** Deep mode includes more multi-file context. */
+export const MAX_CONTEXT_CHARS_DEEP = 80_000;
 
 export type AnalyzeFileInput = {
   name: string;
@@ -31,6 +37,7 @@ export type ValidateAnalyzeOk = {
   language: string;
   code: string;
   multiFileContext?: string;
+  depth: AnalysisDepth;
 };
 
 export type ValidateAnalyzeErr = {
@@ -64,6 +71,11 @@ export function validateAnalyzeRequest(body: unknown): ValidateAnalyzeResult {
     };
   }
 
+  const depth: AnalysisDepth =
+    typeof req.depth === "string" && VALID_DEPTHS.includes(req.depth as AnalysisDepth)
+      ? (req.depth as AnalysisDepth)
+      : "standard";
+
   const rawFiles = Array.isArray(req.files) ? req.files : [];
   if (rawFiles.length === 0) {
     return {
@@ -85,6 +97,9 @@ export function validateAnalyzeRequest(body: unknown): ValidateAnalyzeResult {
       ? req.selectedPath
       : null;
 
+  const contextCap = depth === "deep" ? MAX_CONTEXT_CHARS_DEEP : MAX_CONTEXT_CHARS;
+  const perFileCtx = depth === "deep" ? 8000 : 4000;
+
   let filename: string;
   let language: string;
   let code: string;
@@ -98,12 +113,9 @@ export function validateAnalyzeRequest(body: unknown): ValidateAnalyzeResult {
 
     const others = files
       .filter((f) => f.path !== primary.path)
-      .map(
-        (f) =>
-          `// --- ${f.path} ---\n${f.content.slice(0, 4000)}`
-      )
+      .map((f) => `// --- ${f.path} ---\n${f.content.slice(0, perFileCtx)}`)
       .join("\n\n")
-      .slice(0, MAX_CONTEXT_CHARS);
+      .slice(0, contextCap);
     if (others) multiFileContext = others;
   } else {
     filename =
@@ -135,6 +147,7 @@ export function validateAnalyzeRequest(body: unknown): ValidateAnalyzeResult {
     language,
     code,
     multiFileContext,
+    depth,
   };
 }
 

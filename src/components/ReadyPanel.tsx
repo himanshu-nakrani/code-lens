@@ -17,12 +17,15 @@ export function ReadyPanel({
   onAnalyze,
   onOpenSamples,
 }: ReadyPanelProps) {
+  const n = ALL_TASKS.length;
+  const step = 360 / n;
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-5 py-8 text-center">
       <div className="ready-dial" aria-hidden>
         {ALL_TASKS.map((t, i) => {
           const on = enabledTasks.includes(t.id);
-          const angle = -90 + i * 90;
+          const angle = -90 + i * step;
           return (
             <span
               key={t.id}
@@ -33,7 +36,7 @@ export function ReadyPanel({
           );
         })}
         <span className="ready-dial-core font-mono text-[10px] text-[var(--accent)]">
-          {enabledTasks.length}/4
+          {enabledTasks.length}/{n}
         </span>
       </div>
 
@@ -44,10 +47,10 @@ export function ReadyPanel({
         <p className="mt-1 text-[13px] text-[var(--fg)]">
           {hasFiles ? "Ready to focus" : "Load source to begin"}
         </p>
-        <p className="mx-auto mt-1.5 max-w-[15rem] text-[11px] leading-relaxed text-[var(--muted)]">
+        <p className="mx-auto mt-1.5 max-w-[16rem] text-[11px] leading-relaxed text-[var(--muted)]">
           {hasFiles
-            ? "Lenses selected below. Hit analyze to send them through grok-4.5."
-            : "Drop a file or run a sample — results appear here."}
+            ? "Lenses selected below — bugs, security, architecture, tests. Hit analyze."
+            : "Drop a file or run a sample — advanced findings appear here."}
         </p>
       </div>
 

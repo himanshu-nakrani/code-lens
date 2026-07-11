@@ -87,7 +87,31 @@ describe("validateAnalyzeRequest (shipped)", () => {
     const r = validateAnalyzeRequest(null);
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.error).toMatch(/invalid/i);
+    expect(r.error.toLowerCase()).toMatch(/invalid/);
+  });
+
+  it("accepts advanced tasks and depth", () => {
+    const r = validateAnalyzeRequest({
+      files: [goodFile],
+      tasks: ["security_audit", "architecture"],
+      selectedPath: "a.js",
+      depth: "deep",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.tasks).toEqual(["security_audit", "architecture"]);
+    expect(r.depth).toBe("deep");
+  });
+
+  it("defaults depth to standard", () => {
+    const r = validateAnalyzeRequest({
+      files: [goodFile],
+      tasks: ["explain"],
+      selectedPath: "a.js",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.depth).toBe("standard");
   });
 });
 

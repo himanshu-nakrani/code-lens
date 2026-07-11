@@ -1,25 +1,54 @@
 "use client";
 
-import { ALL_TASKS, type TaskId } from "@/lib/types";
+import { ALL_TASKS, type AnalysisDepth, type TaskId } from "@/lib/types";
 
 const PRESETS: { id: string; label: string; tasks: TaskId[] }[] = [
   {
     id: "full",
     label: "full",
+    tasks: [
+      "explain",
+      "fix_bugs",
+      "generate_tests",
+      "suggest_improvements",
+      "security_audit",
+      "architecture",
+    ],
+  },
+  {
+    id: "core",
+    label: "core",
     tasks: ["explain", "fix_bugs", "generate_tests", "suggest_improvements"],
   },
   { id: "bugs", label: "bugs", tasks: ["explain", "fix_bugs"] },
   { id: "tests", label: "tests", tasks: ["generate_tests"] },
-  { id: "quality", label: "quality", tasks: ["explain", "suggest_improvements"] },
+  {
+    id: "audit",
+    label: "audit",
+    tasks: ["security_audit", "fix_bugs", "architecture"],
+  },
+  {
+    id: "quality",
+    label: "quality",
+    tasks: ["explain", "suggest_improvements", "architecture"],
+  },
 ];
 
 interface TaskTogglesProps {
   enabled: Set<TaskId>;
   onChange: (next: Set<TaskId>) => void;
+  depth?: AnalysisDepth;
+  onDepthChange?: (d: AnalysisDepth) => void;
   disabled?: boolean;
 }
 
-export function TaskToggles({ enabled, onChange, disabled }: TaskTogglesProps) {
+export function TaskToggles({
+  enabled,
+  onChange,
+  depth = "standard",
+  onDepthChange,
+  disabled,
+}: TaskTogglesProps) {
   const toggle = (id: TaskId) => {
     const next = new Set(enabled);
     if (next.has(id)) next.delete(id);
@@ -53,7 +82,8 @@ export function TaskToggles({ enabled, onChange, disabled }: TaskTogglesProps) {
               }`}
             >
               <span className={`dot ${on ? "dot-on" : ""}`} />
-              {task.label}
+              <span className="hidden sm:inline">{task.label}</span>
+              <span className="sm:hidden">{task.shortLabel}</span>
             </button>
           );
         })}
@@ -80,6 +110,30 @@ export function TaskToggles({ enabled, onChange, disabled }: TaskTogglesProps) {
             {isPresetActive(p.tasks) ? `▸ ${p.label}` : p.label}
           </button>
         ))}
+        {onDepthChange && (
+          <>
+            <span className="hidden h-3 w-px bg-[var(--border)] sm:inline-block" />
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() =>
+                onDepthChange(depth === "deep" ? "standard" : "deep")
+              }
+              title={
+                depth === "deep"
+                  ? "Deep mode: exhaustive findings + broader context"
+                  : "Switch to deep analysis"
+              }
+              className={`font-mono text-[10px] uppercase tracking-[0.1em] transition ${
+                depth === "deep"
+                  ? "text-[var(--warn)]"
+                  : "text-[var(--muted-2)] hover:text-[var(--fg-dim)]"
+              }`}
+            >
+              {depth === "deep" ? "▸ deep" : "deep"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

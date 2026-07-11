@@ -12,19 +12,30 @@ export const SAMPLE_META: Record<string, SampleMeta> = {
     tag: "Off-by-one bug",
     blurb: "Inclusive range sum that drops the last integer.",
     accent: "rose",
-    recommendedTasks: ["explain", "fix_bugs", "generate_tests"],
+    recommendedTasks: ["explain", "fix_bugs", "generate_tests", "architecture"],
   },
   "sample-py-empty-list": {
     tag: "Edge case",
     blurb: "Average that crashes on an empty list.",
     accent: "amber",
-    recommendedTasks: ["explain", "fix_bugs", "generate_tests"],
+    recommendedTasks: ["explain", "fix_bugs", "generate_tests", "security_audit"],
   },
   "sample-ts-refactor": {
     tag: "Refactor + tests",
     blurb: "Correct utility that could be cleaner and needs tests.",
     accent: "violet",
-    recommendedTasks: ["explain", "generate_tests", "suggest_improvements"],
+    recommendedTasks: [
+      "explain",
+      "generate_tests",
+      "suggest_improvements",
+      "architecture",
+    ],
+  },
+  "sample-sec-injection": {
+    tag: "Security risk",
+    blurb: "SQL built via string concat — classic injection surface.",
+    accent: "rose",
+    recommendedTasks: ["security_audit", "fix_bugs", "explain"],
   },
 };
 
@@ -116,6 +127,32 @@ export function filterActiveUsers(users: User[]): User[] {
   }
   return result;
 }
+`,
+  },
+  {
+    id: "sample-sec-injection",
+    name: "userLookup.js",
+    path: "samples/userLookup.js",
+    language: "javascript",
+    size: 0,
+    content: `/**
+ * Look up a user by name from a SQLite-like API.
+ * BUG / SECURITY: query is built with string concatenation — SQL injection.
+ */
+const db = require("./db");
+
+function findUserByName(name) {
+  // Never do this with user input
+  const sql = "SELECT * FROM users WHERE name = '" + name + "'";
+  return db.query(sql);
+}
+
+function deleteUser(id) {
+  // Also unsafe if id is not validated as an integer
+  return db.query("DELETE FROM users WHERE id = " + id);
+}
+
+module.exports = { findUserByName, deleteUser };
 `,
   },
 ];

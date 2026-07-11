@@ -23,16 +23,41 @@ if (true) { foo(); }
 describe("buildScorecard (shipped)", () => {
   it("lowers score when bugs are present", () => {
     const clean = buildScorecard(null, {
-      bug_fixes: { issues: [], fixed_code: "ok" },
-      tests: { code: "test()" },
+      bug_fixes: { summary: "", issues: [], fixed_code: "ok" },
+      tests: { framework: "jest", code: "test()" },
     });
     const buggy = buildScorecard(null, {
       bug_fixes: {
+        summary: "bad",
         issues: ["bug1", "bug2", "bug3"],
         fixed_code: "fixed",
       },
     });
     expect(clean.score).toBeGreaterThan(buggy.score);
-    expect(buggy.notes.some((n) => /issue/i.test(n))).toBe(true);
+    expect(buggy.notes.some((n) => /bug/i.test(n))).toBe(true);
+  });
+
+  it("includes multi-axis dimensions and severity counts", () => {
+    const card = buildScorecard(null, {
+      security: {
+        summary: "risk",
+        risk_level: "high",
+        findings: [
+          { title: "inj", detail: "sql", severity: "critical", line: 1 },
+          { title: "xss", detail: "html", severity: "medium", line: 2 },
+        ],
+      },
+      quality: {
+        correctness: 80,
+        security: 25,
+        maintainability: 70,
+        testability: 60,
+        complexity: 40,
+      },
+    });
+    expect(card.dimensions.security).toBe(25);
+    expect(card.severityCounts.critical).toBe(1);
+    expect(card.worst).toBe("critical");
+    expect(card.grade).toMatch(/^[A-F]$/);
   });
 });

@@ -1,16 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CodeStats } from "@/lib/stats";
+import type { CodeStats, Scorecard as ScorecardData } from "@/lib/stats";
+import { SeverityStrip } from "./FindingList";
 
 interface ScorecardProps {
   score: number;
   grade: string;
   notes: string[];
   stats: CodeStats | null;
+  dimensions?: ScorecardData["dimensions"];
+  severityCounts?: ScorecardData["severityCounts"];
 }
 
-export function Scorecard({ score, grade, notes, stats }: ScorecardProps) {
+const DIM_LABELS: { key: keyof NonNullable<ScorecardProps["dimensions"]>; label: string }[] = [
+  { key: "correctness", label: "correct" },
+  { key: "security", label: "secure" },
+  { key: "maintainability", label: "maint" },
+  { key: "testability", label: "test" },
+  { key: "complexity", label: "cx" },
+];
+
+export function Scorecard({
+  score,
+  grade,
+  notes,
+  stats,
+  dimensions,
+  severityCounts,
+}: ScorecardProps) {
   const [display, setDisplay] = useState(0);
   const tone = score >= 80 ? "ok" : score >= 60 ? "accent" : "danger";
   const stroke =
@@ -82,17 +100,61 @@ export function Scorecard({ score, grade, notes, stats }: ScorecardProps) {
             quality spectrum
           </p>
           <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-            From findings + source shape
+            Multi-axis · findings + source shape
           </p>
           {stats && (
-            <div className="mt-2 grid grid-cols-3 gap-1">
+            <div className="mt-2 grid grid-cols-4 gap-1">
               <Metric label="loc" value={String(stats.code)} />
               <Metric label="fn" value={String(stats.functions)} />
               <Metric label="cx" value={stats.complexityHint} />
+              <Metric label="br" value={String(stats.branches)} />
             </div>
           )}
         </div>
       </div>
+
+      {dimensions && (
+        <div className="mt-3 space-y-1.5">
+          {DIM_LABELS.map(({ key, label }) => {
+            const v = dimensions[key] ?? 0;
+            // complexity: high is bad — show inverted color
+            const inverted = key === "complexity";
+            const good = inverted ? v < 40 : v >= 70;
+            const mid = inverted ? v < 65 : v >= 50;
+            const barColor = good
+              ? "var(--ok)"
+              : mid
+                ? "var(--warn)"
+                : "var(--danger)";
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <span className="w-12 shrink-0 font-mono text-[9px] uppercase tracking-wide text-[var(--muted-2)]">
+                  {label}
+                </span>
+                <div className="h-1 min-w-0 flex-1 overflow-hidden bg-[var(--border)]">
+                  <div
+                    className="dim-bar h-full transition-all duration-700"
+                    style={{
+                      width: `${v}%`,
+                      background: barColor,
+                      boxShadow: `0 0 6px ${barColor}`,
+                    }}
+                  />
+                </div>
+                <span className="w-6 shrink-0 text-right font-mono text-[10px] tabular-nums text-[var(--muted)]">
+                  {v}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {severityCounts && (
+        <div className="mt-3">
+          <SeverityStrip counts={severityCounts} />
+        </div>
+      )}
 
       {notes.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-1.5">

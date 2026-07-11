@@ -6,8 +6,10 @@ const STEPS = [
   "calibrating aperture…",
   "reading source structure…",
   "querying grok-4.5…",
+  "ranking severities…",
+  "mapping line targets…",
   "resolving findings…",
-  "assembling report…",
+  "assembling multi-axis report…",
 ];
 
 interface FocusingPanelProps {
