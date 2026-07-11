@@ -5,9 +5,10 @@ const SHORTCUTS = [
   { keys: "⌘ / Ctrl + Enter", desc: "Run analysis" },
   { keys: "⌘ / Ctrl + F", desc: "Find in current file" },
   { keys: "⌘ / Ctrl + Shift + P", desc: "Paste code dialog" },
+  { keys: "⌘ / Ctrl + Shift + G", desc: "Load GitHub repository" },
   { keys: "⌘ / Ctrl + Shift + ?", desc: "Toggle this help" },
   { keys: "Esc", desc: "Close modal / palette" },
-  { keys: "1 / 2 / 3", desc: "Empty: run samples · Loaded: switch panes" },
+  { keys: "1 / 2 / 3 / 4", desc: "Empty: run samples · Loaded: switch panes" },
   { keys: "[ / ]", desc: "Previous / next file in workspace" },
 ];
 

@@ -16,22 +16,30 @@ function walk(dir: string, acc: string[] = []): string[] {
 }
 
 describe("security boundary (static, shipped tree)", () => {
-  it("client components never import lib/grok", () => {
+  it("client components never import server-only helpers", () => {
     const componentsDir = path.join(root, "src/components");
     const files = walk(componentsDir);
     expect(files.length).toBeGreaterThan(0);
+    const forbidden = [
+      /from\s+["']@\/lib\/grok["']/,
+      /from\s+["']\.\.\/lib\/grok["']/,
+      /from\s+["']@\/lib\/github-fetch["']/,
+      /from\s+["']\.\.\/lib\/github-fetch["']/,
+    ];
     const offenders: string[] = [];
     for (const f of files) {
       const text = fs.readFileSync(f, "utf8");
-      if (/from\s+["']@\/lib\/grok["']/.test(text) || /from\s+["']\.\.\/lib\/grok["']/.test(text)) {
+      if (forbidden.some((re) => re.test(text))) {
         offenders.push(path.relative(root, f));
       }
     }
     expect(offenders).toEqual([]);
   });
 
-  it("grok helper is marked server-only", () => {
+  it("server helpers are marked server-only", () => {
     const grok = fs.readFileSync(path.join(root, "src/lib/grok.ts"), "utf8");
     expect(grok).toMatch(/import\s+["']server-only["']/);
+    const gh = fs.readFileSync(path.join(root, "src/lib/github-fetch.ts"), "utf8");
+    expect(gh).toMatch(/import\s+["']server-only["']/);
   });
 });

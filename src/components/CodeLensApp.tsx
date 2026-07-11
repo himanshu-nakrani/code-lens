@@ -11,6 +11,7 @@ import { SampleCards } from "./SampleCards";
 import { StatusBar } from "./StatusBar";
 import { ToastStack, type ToastMessage } from "./Toast";
 import { PasteModal } from "./PasteModal";
+import { GitHubModal, type GitHubLoadResult } from "./GitHubModal";
 import { ShortcutsModal } from "./ShortcutsModal";
 import { CommandPalette, type CommandItem } from "./CommandPalette";
 import { LensBackdrop } from "./LensBackdrop";
@@ -104,6 +105,7 @@ export function CodeLensApp() {
   >([]);
   const [mobilePane, setMobilePane] = useState<MobilePane>("code");
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
@@ -312,6 +314,42 @@ export function CodeLensApp() {
       setIngestNotes([`Pasted ${path}`]);
       setMobilePane("code");
       pushToast("success", `Added ${file.name}`);
+    },
+    [pushToast, selectPath]
+  );
+
+  const loadGitHubRepo = useCallback(
+    (res: GitHubLoadResult) => {
+      setFiles(res.files);
+      selectPath(res.files[0]?.path ?? null);
+      setResult(null);
+      setError(null);
+      setParseError(false);
+      setRawText(null);
+      setDurationMs(null);
+      setViewerMode("source");
+      setHighlightLine(null);
+      setMobilePane("code");
+
+      const label = `${res.repo.owner}/${res.repo.name}@${res.repo.ref}`;
+      const notes: string[] = [
+        `Loaded ${res.files.length} file${res.files.length === 1 ? "" : "s"} from ${label}`,
+      ];
+      if (res.repo.private) notes.push("Private repository (token auth)");
+      if (res.skipped.length) {
+        notes.push(
+          `Skipped ${res.skipped.length}: ${res.skipped.slice(0, 4).join("; ")}${res.skipped.length > 4 ? "…" : ""}`
+        );
+      }
+      if (res.truncated.length) {
+        notes.push(`Truncated: ${res.truncated.join(", ")}`);
+      }
+      notes.push(...res.warnings);
+      setIngestNotes(notes);
+      pushToast(
+        "success",
+        `GitHub · ${res.files.length} file${res.files.length === 1 ? "" : "s"} from ${res.repo.name}`
+      );
     },
     [pushToast, selectPath]
   );
@@ -662,6 +700,11 @@ export function CodeLensApp() {
         setPasteOpen(true);
         return;
       }
+      if (meta && e.shiftKey && (e.key === "g" || e.key === "G")) {
+        e.preventDefault();
+        setGithubOpen(true);
+        return;
+      }
       if (meta && e.shiftKey && (e.key === "?" || e.key === "/")) {
         e.preventDefault();
         setHelpOpen((v) => !v);
@@ -669,6 +712,7 @@ export function CodeLensApp() {
       }
       if (e.key === "Escape") {
         setPasteOpen(false);
+        setGithubOpen(false);
         setHelpOpen(false);
         setCmdOpen(false);
         setFindOpen(false);
@@ -733,6 +777,13 @@ export function CodeLensApp() {
         hint: "⌘⇧P",
         group: "Workspace",
         run: () => setPasteOpen(true),
+      },
+      {
+        id: "github",
+        label: "Load GitHub repository…",
+        hint: "⌘⇧G",
+        group: "Workspace",
+        run: () => setGithubOpen(true),
       },
       {
         id: "find",
@@ -868,6 +919,14 @@ export function CodeLensApp() {
               title="⌘⇧P"
             >
               paste
+            </button>
+            <button
+              type="button"
+              onClick={() => setGithubOpen(true)}
+              className="btn-secondary"
+              title="⌘⇧G · Load GitHub repo"
+            >
+              github
             </button>
             <button
               type="button"
@@ -1061,13 +1120,21 @@ export function CodeLensApp() {
             )}
             {files.length > 0 && (
               <div className="shrink-0 border-t border-[var(--border)] p-2">
-                <div className="mb-2">
+                <div className="mb-2 flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => setPasteOpen(true)}
-                    className="btn-secondary w-full justify-center text-xs"
+                    className="btn-secondary flex-1 justify-center text-xs"
                   >
-                    Paste code
+                    Paste
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGithubOpen(true)}
+                    className="btn-secondary flex-1 justify-center text-xs"
+                    title="Load GitHub repo"
+                  >
+                    GitHub
                   </button>
                 </div>
                 <DropZone onFiles={handleFiles} disabled={loading} compact />
@@ -1180,13 +1247,23 @@ export function CodeLensApp() {
                   <div className="min-w-0 flex-1">
                     <DropZone onFiles={handleFiles} disabled={loading} />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setPasteOpen(true)}
-                    className="btn-secondary shrink-0 justify-center sm:w-40"
-                  >
-                    paste code
-                  </button>
+                  <div className="flex shrink-0 flex-col gap-2 sm:w-40">
+                    <button
+                      type="button"
+                      onClick={() => setPasteOpen(true)}
+                      className="btn-secondary w-full justify-center"
+                    >
+                      paste code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGithubOpen(true)}
+                      className="btn-secondary w-full justify-center"
+                      title="⌘⇧G"
+                    >
+                      github repo
+                    </button>
+                  </div>
                 </div>
 
                 {/* Floating shortcut dock — empty state only */}
@@ -1196,6 +1273,9 @@ export function CodeLensApp() {
                   </button>
                   <button type="button" className="tip-chip" onClick={() => setPasteOpen(true)}>
                     paste
+                  </button>
+                  <button type="button" className="tip-chip" onClick={() => setGithubOpen(true)}>
+                    <span className="text-[var(--accent)]">⌘⇧G</span> github
                   </button>
                   <button
                     type="button"
@@ -1365,6 +1445,12 @@ export function CodeLensApp() {
         open={pasteOpen}
         onClose={() => setPasteOpen(false)}
         onSubmit={addPastedFile}
+      />
+      <GitHubModal
+        open={githubOpen}
+        onClose={() => setGithubOpen(false)}
+        onLoaded={loadGitHubRepo}
+        disabled={loading}
       />
       <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <CommandPalette
