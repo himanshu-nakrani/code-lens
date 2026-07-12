@@ -1,12 +1,13 @@
 @import "tailwindcss";
 
 /*
-  Code Lens — Glass Sapphire theme.
-  Deep indigo glass, sapphire accents, soft specular glow.
-  Optical instrument UI without neon-green cliché.
+  Code Lens themes.
+  Dark: Glass Sapphire (default)
+  Light: Paper Glacier — cool paper + sapphire ink
 */
 
-:root {
+:root,
+html[data-theme="dark"] {
   /* Base atmosphere — deep sapphire night */
   --bg: #070b14;
   --surface: #0c1220;
@@ -27,19 +28,56 @@
   --accent-dim: rgba(91, 157, 255, 0.1);
   --accent-border: rgba(91, 157, 255, 0.42);
   --accent-glow: rgba(91, 157, 255, 0.28);
-  /* Semantic (kept high-contrast on blue base) */
+  /* Semantic */
   --danger: #ff6b8a;
   --danger-dim: rgba(255, 107, 138, 0.12);
   --ok: #5eead4;
   --ok-dim: rgba(94, 234, 212, 0.1);
   --warn: #f5c15a;
-  /* Slightly softer geometry for glass panels */
+  /* Geometry */
   --radius: 5px;
   --radius-lg: 10px;
   --font-sans: var(--font-plex-sans);
   --font-mono: var(--font-plex-mono);
   --lx: 50%;
   --ly: 30%;
+  /* Primary button label on sapphire fill */
+  --btn-primary-fg: #06101f;
+  --shadow-elevated: 0 24px 64px rgba(2, 8, 24, 0.75);
+  --grid-line: rgba(61, 82, 117, 0.12);
+  --body-glow-a: rgba(91, 157, 255, 0.14);
+  --body-glow-b: rgba(56, 100, 200, 0.08);
+  --body-grad: linear-gradient(180deg, #0a1020 0%, var(--bg) 40%, #060910 100%);
+}
+
+html[data-theme="light"] {
+  --bg: #f0f4fa;
+  --surface: #ffffff;
+  --surface-2: #e8eef8;
+  --surface-3: #dce5f2;
+  --code-bg: #f7f9fc;
+  --border: #c5d0e0;
+  --border-bright: #94a6c0;
+  --fg: #0f172a;
+  --fg-dim: #334155;
+  --muted: #5b6b82;
+  --muted-2: #8494aa;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-dim: rgba(37, 99, 235, 0.09);
+  --accent-border: rgba(37, 99, 235, 0.38);
+  --accent-glow: rgba(37, 99, 235, 0.2);
+  --danger: #dc2626;
+  --danger-dim: rgba(220, 38, 38, 0.1);
+  --ok: #0f766e;
+  --ok-dim: rgba(15, 118, 110, 0.1);
+  --warn: #b45309;
+  --btn-primary-fg: #f8fafc;
+  --shadow-elevated: 0 20px 48px rgba(15, 40, 80, 0.12);
+  --grid-line: rgba(100, 130, 170, 0.14);
+  --body-glow-a: rgba(37, 99, 235, 0.1);
+  --body-glow-b: rgba(14, 165, 233, 0.06);
+  --body-grad: linear-gradient(180deg, #f8fafc 0%, var(--bg) 45%, #e8eef6 100%);
 }
 
 @theme inline {
@@ -64,13 +102,12 @@ body {
   font-family: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   letter-spacing: 0.01em;
-  /* Sapphire night: top glow + faint indigo vignette + subtle glass grid */
   background-image:
-    radial-gradient(ellipse 90% 55% at 50% -15%, rgba(91, 157, 255, 0.14), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 85% 90%, rgba(56, 100, 200, 0.08), transparent 50%),
-    linear-gradient(180deg, #0a1020 0%, var(--bg) 40%, #060910 100%),
-    linear-gradient(rgba(61, 82, 117, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(61, 82, 117, 0.12) 1px, transparent 1px);
+    radial-gradient(ellipse 90% 55% at 50% -15%, var(--body-glow-a), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 85% 90%, var(--body-glow-b), transparent 50%),
+    var(--body-grad),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: auto, auto, auto, 64px 64px, 64px 64px;
   background-position: 0 0, 0 0, 0 0, -1px -1px, -1px -1px;
   background-attachment: fixed;
@@ -154,12 +191,12 @@ body {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #06101f;
+  color: var(--btn-primary-fg);
   overflow: hidden;
   transition: transform 0.12s ease, box-shadow 0.15s ease, filter 0.12s;
   box-shadow:
-    0 0 22px rgba(91, 157, 255, 0.28),
-    0 2px 0 rgba(0, 0, 0, 0.2),
+    0 0 22px var(--accent-glow),
+    0 2px 0 color-mix(in srgb, var(--bg) 40%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
@@ -170,6 +207,11 @@ body {
     0 0 28px var(--accent-glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
   transform: translateY(-1px);
+}
+
+html[data-theme="light"] .btn-primary {
+  background: linear-gradient(180deg, #3b82f6 0%, var(--accent) 48%, #1d4ed8 100%);
+  border-color: color-mix(in srgb, var(--accent) 80%, #1e3a8a);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -452,6 +494,11 @@ body {
 .sample-preview .tok-str { color: #9ddea8; }
 .sample-preview .tok-cm { color: #5c6f8c; }
 
+html[data-theme="light"] .sample-preview .tok-kw { color: #1e40af; }
+html[data-theme="light"] .sample-preview .tok-fn { color: #0369a1; }
+html[data-theme="light"] .sample-preview .tok-str { color: #15803d; }
+html[data-theme="light"] .sample-preview .tok-cm { color: #64748b; }
+
 /* Drop zone magnetic */
 .drop-zone {
   border: 1px dashed color-mix(in srgb, var(--border-bright) 80%, var(--accent-border));
@@ -724,16 +771,69 @@ body {
 }
 
 .modal-panel {
-  background: color-mix(in srgb, var(--surface) 92%, rgba(40, 80, 160, 0.2));
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 60%, var(--accent-border));
   border-radius: var(--radius-lg);
   box-shadow:
-    0 0 0 1px rgba(91, 157, 255, 0.08),
-    0 24px 64px rgba(2, 8, 24, 0.75),
+    0 0 0 1px var(--accent-dim),
+    var(--shadow-elevated),
     0 0 48px var(--accent-dim),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(16px) saturate(1.2);
   animation: fade-up 0.22s ease-out;
+}
+
+html[data-theme="light"] .modal-panel {
+  background: color-mix(in srgb, var(--surface) 96%, var(--surface-2));
+  box-shadow:
+    0 0 0 1px var(--border),
+    var(--shadow-elevated),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .app-header {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-bottom-color: var(--border);
+}
+
+html[data-theme="light"] .glass-panel,
+html[data-theme="light"] .glass-footer,
+html[data-theme="light"] .glass-strip {
+  background: color-mix(in srgb, var(--surface) 92%, var(--surface-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+html[data-theme="light"] .code-block-toolbar {
+  background: color-mix(in srgb, var(--surface-2) 90%, white);
+}
+
+html[data-theme="light"] .grain-overlay {
+  opacity: 0.012;
+  mix-blend-mode: multiply;
+}
+
+html[data-theme="light"] .scan-vignette {
+  box-shadow: inset 0 0 80px rgba(15, 40, 80, 0.06);
+}
+
+html[data-theme="light"] .result-panel {
+  background: var(--surface);
+}
+
+html[data-theme="light"] .scorecard-panel {
+  background: var(--surface);
+}
+
+html[data-theme="light"] .finding-card {
+  background: var(--code-bg) !important;
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border-bright) 80%, var(--accent));
+}
+
+html[data-theme="light"] .aperture-logo {
+  background: color-mix(in srgb, var(--surface) 90%, var(--accent-dim));
 }
 
 kbd {

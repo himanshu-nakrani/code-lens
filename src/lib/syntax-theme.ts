@@ -1,17 +1,20 @@
 /**
- * Prism theme tuned for Glass Sapphire (indigo night + sapphire accent).
- * Based on oneDark structure; values chosen for contrast on --code-bg.
+ * Prism themes for Code Lens.
+ * Dark: Glass Sapphire · Light: Paper Glacier ink
  */
 
 import type { CSSProperties } from "react";
+import type { ThemeId } from "./theme";
 
 type PrismTheme = { [key: string]: CSSProperties };
+
+const baseMono = 'var(--font-plex-mono), ui-monospace, monospace';
 
 export const sapphirePrism: PrismTheme = {
   'code[class*="language-"]': {
     color: "#d6e2f5",
     background: "none",
-    fontFamily: 'var(--font-plex-mono), ui-monospace, monospace',
+    fontFamily: baseMono,
     textAlign: "left",
     whiteSpace: "pre",
     wordSpacing: "normal",
@@ -24,7 +27,7 @@ export const sapphirePrism: PrismTheme = {
   'pre[class*="language-"]': {
     color: "#d6e2f5",
     background: "transparent",
-    fontFamily: 'var(--font-plex-mono), ui-monospace, monospace',
+    fontFamily: baseMono,
     textAlign: "left",
     whiteSpace: "pre",
     wordSpacing: "normal",
@@ -72,3 +75,78 @@ export const sapphirePrism: PrismTheme = {
   bold: { fontWeight: "bold" },
   italic: { fontStyle: "italic" },
 };
+
+/** High-contrast light theme for paper / glacier UI. */
+export const glacierPrism: PrismTheme = {
+  'code[class*="language-"]': {
+    color: "#1e293b",
+    background: "none",
+    fontFamily: baseMono,
+    textAlign: "left",
+    whiteSpace: "pre",
+    wordSpacing: "normal",
+    wordBreak: "normal",
+    wordWrap: "normal",
+    lineHeight: "1.5",
+    tabSize: 2,
+    hyphens: "none",
+  },
+  'pre[class*="language-"]': {
+    color: "#1e293b",
+    background: "transparent",
+    fontFamily: baseMono,
+    textAlign: "left",
+    whiteSpace: "pre",
+    wordSpacing: "normal",
+    wordBreak: "normal",
+    wordWrap: "normal",
+    lineHeight: "1.5",
+    tabSize: 2,
+    hyphens: "none",
+    padding: "1em",
+    margin: "0",
+    overflow: "auto",
+  },
+  comment: { color: "#64748b", fontStyle: "italic" },
+  prolog: { color: "#64748b" },
+  doctype: { color: "#64748b" },
+  cdata: { color: "#64748b" },
+  punctuation: { color: "#475569" },
+  namespace: { opacity: 0.85 },
+  property: { color: "#1d4ed8" },
+  tag: { color: "#1d4ed8" },
+  boolean: { color: "#7c3aed" },
+  number: { color: "#7c3aed" },
+  constant: { color: "#7c3aed" },
+  symbol: { color: "#7c3aed" },
+  deleted: { color: "#dc2626" },
+  selector: { color: "#0f766e" },
+  "attr-name": { color: "#0f766e" },
+  string: { color: "#15803d" },
+  char: { color: "#15803d" },
+  builtin: { color: "#0f766e" },
+  inserted: { color: "#15803d" },
+  operator: { color: "#2563eb" },
+  entity: { color: "#2563eb", cursor: "help" },
+  url: { color: "#2563eb" },
+  ".language-css .token.string": { color: "#15803d" },
+  ".style .token.string": { color: "#15803d" },
+  atrule: { color: "#b45309" },
+  "attr-value": { color: "#b45309" },
+  keyword: { color: "#1e40af" },
+  function: { color: "#0369a1" },
+  "class-name": { color: "#a16207" },
+  regex: { color: "#be123c" },
+  important: { color: "#be123c", fontWeight: "bold" },
+  variable: { color: "#be123c" },
+  bold: { fontWeight: "bold" },
+  italic: { fontStyle: "italic" },
+};
+
+export function prismThemeFor(theme: ThemeId): PrismTheme {
+  return theme === "light" ? glacierPrism : sapphirePrism;
+}
+
+export function lineNumberColor(theme: ThemeId): string {
+  return theme === "light" ? "#94a3b8" : "#3d5275";
+}

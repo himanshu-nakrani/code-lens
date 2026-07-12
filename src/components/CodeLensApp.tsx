@@ -48,6 +48,12 @@ import type {
   TaskId,
 } from "@/lib/types";
 import { ALL_TASKS } from "@/lib/types";
+import {
+  applyTheme,
+  resolveTheme,
+  toggleTheme,
+  type ThemeId,
+} from "@/lib/theme";
 
 /** Calm default: three primary lenses (not the full six). */
 const DEFAULT_TASKS: TaskId[] = [
@@ -126,6 +132,7 @@ export function CodeLensApp() {
   const [samplesMenuOpen, setSamplesMenuOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [uiTheme, setUiTheme] = useState<ThemeId>("dark");
   const samplesMenuRef = useRef<HTMLDivElement>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const toastId = useRef(0);
@@ -156,6 +163,9 @@ export function CodeLensApp() {
       if (stored) setEnabledTasks(stored);
     }
     setDepth(loadStoredDepth());
+    const t = resolveTheme();
+    applyTheme(t);
+    setUiTheme(t);
     setHydrated(true);
   }, []);
 
@@ -974,6 +984,12 @@ export function CodeLensApp() {
         run: () => setFocusNoteOpen((v) => !v),
       },
       {
+        id: "theme",
+        label: uiTheme === "dark" ? "Switch to light theme" : "Switch to dark theme",
+        group: "Workspace",
+        run: () => setUiTheme((t) => toggleTheme(t)),
+      },
+      {
         id: "share",
         label: "Copy share summary",
         group: "Export",
@@ -999,6 +1015,7 @@ export function CodeLensApp() {
       focusMode,
       depth,
       focusNoteOpen,
+      uiTheme,
     ]
   );
 
@@ -1041,6 +1058,14 @@ export function CodeLensApp() {
               title="⌘K"
             >
               cmd
+            </button>
+            <button
+              type="button"
+              onClick={() => setUiTheme((t) => toggleTheme(t))}
+              className="btn-secondary"
+              title={uiTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {uiTheme === "dark" ? "light" : "dark"}
             </button>
             <div className="relative" ref={samplesMenuRef}>
               <button
@@ -1483,6 +1508,7 @@ export function CodeLensApp() {
                   annotations={showingFixed ? [] : annotations}
                   highlightLine={showingFixed ? null : highlightLine}
                   onAnnotationClick={jumpToLine}
+                  uiTheme={uiTheme}
                 />
               </div>
             ) : (
@@ -1591,6 +1617,7 @@ export function CodeLensApp() {
                 jumpToFinding(idx >= 0 ? idx : 0, line);
               }}
               onExportSarif={result ? exportSarif : undefined}
+              uiTheme={uiTheme}
             />
           </div>
         </aside>

@@ -6,7 +6,8 @@ import { toPrismLanguage } from "@/lib/languages";
 import { downloadText } from "@/lib/export";
 import type { Finding, Severity } from "@/lib/types";
 import { findingsWithLines, sortBySeverity } from "@/lib/findings";
-import { sapphirePrism } from "@/lib/syntax-theme";
+import { lineNumberColor, prismThemeFor } from "@/lib/syntax-theme";
+import type { ThemeId } from "@/lib/theme";
 
 export type LineAnnotation = {
   line: number;
@@ -30,6 +31,7 @@ interface CodeBlockProps {
   onAnnotationClick?: (line: number) => void;
   /** Hide dense toolbar chrome (calm code view). */
   compactToolbar?: boolean;
+  uiTheme?: ThemeId;
 }
 
 const toolBtn =
@@ -60,6 +62,7 @@ export function CodeBlock({
   highlightLine = null,
   onAnnotationClick,
   compactToolbar = true,
+  uiTheme = "dark",
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const [wrap, setWrap] = useState(false);
@@ -288,7 +291,7 @@ export function CodeBlock({
       >
         <SyntaxHighlighter
           language={prismLang}
-          style={sapphirePrism}
+          style={prismThemeFor(uiTheme)}
           showLineNumbers={showLineNumbers}
           wrapLines
           wrapLongLines={wrap}
@@ -306,7 +309,7 @@ export function CodeBlock({
           lineNumberStyle={{
             minWidth: "2.75em",
             paddingRight: "0.85em",
-            color: "#3d5275",
+            color: lineNumberColor(uiTheme),
             userSelect: "none",
           }}
           codeTagProps={{

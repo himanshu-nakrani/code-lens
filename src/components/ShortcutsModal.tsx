@@ -11,6 +11,7 @@ const SHORTCUTS = [
   { keys: "1 / 2 / 3 / 4", desc: "Empty: run samples · Loaded: switch panes" },
   { keys: "[ / ]", desc: "Previous / next file in workspace" },
   { keys: "n / p", desc: "Next / previous finding (with line)" },
+  { keys: "cmd → theme", desc: "Toggle light / dark theme" },
 ];
 
 interface ShortcutsModalProps {

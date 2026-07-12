@@ -13,6 +13,7 @@ import type { CodeStats } from "@/lib/stats";
 import { buildScorecard } from "@/lib/stats";
 import { CountUp } from "./CountUp";
 import { collectAllFindings, countBySeverity } from "@/lib/findings";
+import type { ThemeId } from "@/lib/theme";
 
 interface ResultsPanelProps {
   loading: boolean;
@@ -37,6 +38,7 @@ interface ResultsPanelProps {
   onCancel?: () => void;
   onAnalyze?: () => void;
   onJumpToLine?: (line: number) => void;
+  uiTheme?: ThemeId;
 }
 
 export function ResultsPanel({
@@ -62,6 +64,7 @@ export function ResultsPanel({
   onCancel,
   onAnalyze,
   onJumpToLine,
+  uiTheme = "dark",
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<"all" | TaskId>("all");
   const [stepIdx, setStepIdx] = useState(0);
@@ -271,6 +274,7 @@ export function ResultsPanel({
               onApplyFix={onApplyFix}
               onAddTests={onAddTests}
               onJumpToLine={onJumpToLine}
+              uiTheme={uiTheme}
             />
           </div>
         ))}
@@ -287,6 +291,7 @@ function TaskResultCard({
   onApplyFix,
   onAddTests,
   onJumpToLine,
+  uiTheme = "dark",
 }: {
   taskId: TaskId;
   result: AnalysisResult;
@@ -295,6 +300,7 @@ function TaskResultCard({
   onApplyFix?: (code: string) => void;
   onAddTests?: (code: string, framework: string) => void;
   onJumpToLine?: (line: number) => void;
+  uiTheme?: ThemeId;
 }) {
   const [fixView, setFixView] = useState<"code" | "diff">("code");
   const meta = ALL_TASKS.find((t) => t.id === taskId);
@@ -393,6 +399,7 @@ function TaskResultCard({
             maxHeight="320px"
             filename="fixed"
             downloadName="fixed"
+            uiTheme={uiTheme}
           />
         ) : null}
       </PanelShell>
@@ -445,6 +452,7 @@ function TaskResultCard({
                   ? "generated.test.ts"
                   : "generated.test.js"
             }
+            uiTheme={uiTheme}
           />
         )}
       </PanelShell>
