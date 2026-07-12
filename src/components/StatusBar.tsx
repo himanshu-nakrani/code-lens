@@ -32,80 +32,60 @@ export function StatusBar({
   lastTarget,
   hasResult,
   hasApiKey,
-  sourceStats,
-  workspaceSource,
   findingCount = 0,
   depth,
 }: StatusBarProps) {
   return (
-    <footer className="status-bar relative z-20 shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] tracking-wide text-[var(--muted)]">
+    <footer className="status-bar glass-footer relative z-20 shrink-0 border-t border-[var(--border)] px-3 py-1.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] tracking-wide text-[var(--muted)]">
         <span className="inline-flex items-center gap-2">
-          <Spectrogram active={loading} bars={10} />
+          {loading ? <Spectrogram active bars={8} /> : null}
           <span className="inline-flex items-center gap-1.5">
             <span
               className={`status-dot ${loading ? "status-dot-pulse" : hasResult ? "status-dot-ok" : ""}`}
             />
-            {loading ? "focusing" : hasResult ? "locked" : "idle"}
+            {loading ? "focusing" : hasResult ? "ready" : "idle"}
           </span>
         </span>
-        {hasApiKey != null && (
-          <span className={hasApiKey ? "text-[var(--ok)]" : "text-[var(--danger)]"}>
-            {hasApiKey ? "key·ok" : "key·missing"}
+        {hasApiKey === false && (
+          <span className="text-[var(--danger)]">key missing</span>
+        )}
+        {hasApiKey === true && (
+          <span className="hidden text-[var(--muted-2)] sm:inline">key ok</span>
+        )}
+        <span>
+          {fileCount} file{fileCount === 1 ? "" : "s"}
+          {totalBytes > 0 && (
+            <span className="text-[var(--muted-2)]"> · {formatBytes(totalBytes)}</span>
+          )}
+        </span>
+        {lineCount > 0 && language && language !== "text" && (
+          <span className="text-[var(--muted-2)]">
+            {language} · {lineCount}L
           </span>
         )}
-        {workspaceSource && (
-          <span className="max-w-[10rem] truncate text-[var(--accent)]" title={workspaceSource}>
-            {workspaceSource}
-          </span>
-        )}
-        {depth === "deep" && <span className="text-[var(--warn)]">deep</span>}
-        {findingCount > 0 && (
+        {findingCount > 0 && !loading && (
           <span className="text-[var(--danger)]">{findingCount} findings</span>
         )}
-        <span>
-          <span className="text-[var(--muted-2)]">n</span>={fileCount}
-        </span>
-        <span>
-          <span className="text-[var(--muted-2)]">sz</span> {formatBytes(totalBytes)}
-        </span>
-        {lineCount > 0 && (
-          <span>
-            <span className="text-[var(--muted-2)]">ln</span> {lineCount}
-          </span>
-        )}
-        {sourceStats && (
-          <span className="hidden sm:inline">
-            <span className="text-[var(--muted-2)]">fn</span> {sourceStats.functions}
-          </span>
-        )}
-        {sourceStats && (
-          <span className="hidden md:inline">
-            <span className="text-[var(--muted-2)]">cx</span> {sourceStats.complexityHint}
-          </span>
-        )}
-        {language && language !== "text" && (
-          <span className="text-[var(--fg-dim)]">{language}</span>
-        )}
-        <span className="hidden sm:inline text-[var(--accent)]">grok-4.5</span>
+        {depth === "deep" && <span className="text-[var(--warn)]">deep</span>}
         {loading && (
           <span className="tabular-nums text-[var(--accent)]">
             t+{(elapsedMs / 1000).toFixed(1)}s
           </span>
         )}
         {!loading && durationMs != null && (
-          <span className="tabular-nums">
+          <span className="tabular-nums text-[var(--muted-2)]">
             last {(durationMs / 1000).toFixed(1)}s
           </span>
         )}
         {lastTarget && (
-          <span className="max-w-[24%] truncate text-[var(--muted-2)]" title={lastTarget}>
-            → {lastTarget}
+          <span className="ml-auto max-w-[30%] truncate text-[var(--muted-2)]" title={lastTarget}>
+            {lastTarget}
           </span>
         )}
-        <span className="ml-auto hidden text-[var(--muted-2)] lg:inline">
-          ⌘K · ⌘↵ · ⌘F
-        </span>
+        {!lastTarget && (
+          <span className="ml-auto hidden text-[var(--muted-2)] lg:inline">⌘K · ⌘↵</span>
+        )}
       </div>
     </footer>
   );

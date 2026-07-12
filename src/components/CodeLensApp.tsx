@@ -49,11 +49,11 @@ import type {
 } from "@/lib/types";
 import { ALL_TASKS } from "@/lib/types";
 
+/** Calm default: three primary lenses (not the full six). */
 const DEFAULT_TASKS: TaskId[] = [
   "explain",
   "fix_bugs",
   "generate_tests",
-  "suggest_improvements",
 ];
 
 const VALID_TASK_IDS = new Set(ALL_TASKS.map((t) => t.id));
@@ -123,6 +123,10 @@ export function CodeLensApp() {
   const [focusNoteOpen, setFocusNoteOpen] = useState(false);
   const [findingNavIndex, setFindingNavIndex] = useState(0);
   const [workspaceSource, setWorkspaceSource] = useState<string | null>(null);
+  const [samplesMenuOpen, setSamplesMenuOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const samplesMenuRef = useRef<HTMLDivElement>(null);
+  const addMenuRef = useRef<HTMLDivElement>(null);
   const toastId = useRef(0);
   const analyzeRef = useRef<() => void>(() => {});
   const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
@@ -178,6 +182,21 @@ export function CodeLensApp() {
       .then((r) => r.json())
       .then((d: { hasKey?: boolean }) => setHasApiKey(Boolean(d.hasKey)))
       .catch(() => setHasApiKey(null));
+  }, []);
+
+  // Close calm overflow menus on outside click
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (samplesMenuRef.current && !samplesMenuRef.current.contains(t)) {
+        setSamplesMenuOpen(false);
+      }
+      if (addMenuRef.current && !addMenuRef.current.contains(t)) {
+        setAddMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
   const selectedFile = useMemo(
@@ -984,17 +1003,9 @@ export function CodeLensApp() {
                 <h1 className="font-mono text-[13px] font-semibold tracking-wide text-[var(--fg)]">
                   code-lens
                 </h1>
-                <span className="font-mono text-[10px] text-[var(--muted-2)]">
-                  optical analyzer · grok-4.5
-                </span>
-                {hasApiKey === true && (
-                  <span className="hidden font-mono text-[10px] text-[var(--ok)] sm:inline">
-                    · key ok
-                  </span>
-                )}
                 {hasApiKey === false && (
                   <span className="font-mono text-[10px] text-[var(--danger)]">
-                    · no key
+                    no key
                   </span>
                 )}
               </div>
@@ -1010,58 +1021,55 @@ export function CodeLensApp() {
             >
               cmd
             </button>
-            <button
-              type="button"
-              onClick={() => setPasteOpen(true)}
-              className="btn-secondary"
-              title="⌘⇧P"
-            >
-              paste
-            </button>
-            <button
-              type="button"
-              onClick={() => setGithubOpen(true)}
-              className="btn-secondary"
-              title="⌘⇧G · Load GitHub repo"
-            >
-              github
-            </button>
-            <button
-              type="button"
-              onClick={() => setFocusMode((f) => !f)}
-              className={`btn-secondary ${focusMode ? "!border-[var(--accent-border)] !text-[var(--accent)]" : ""}`}
-            >
-              {focusMode ? "files" : "focus"}
-            </button>
+            <div className="relative" ref={samplesMenuRef}>
+              <button
+                type="button"
+                onClick={() => setSamplesMenuOpen((v) => !v)}
+                className="btn-secondary"
+                title="Load demo samples"
+              >
+                samples ▾
+              </button>
+              {samplesMenuOpen && (
+                <div className="absolute right-0 top-full z-40 mt-1 min-w-[11rem] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+                  {SAMPLE_SNIPPETS.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        loadSample(s, false);
+                        setSamplesMenuOpen(false);
+                      }}
+                      className="flex w-full flex-col px-3 py-1.5 text-left hover:bg-[var(--surface-2)]"
+                    >
+                      <span className="font-mono text-[11px] text-[var(--fg)]">
+                        {s.name}
+                      </span>
+                      <span className="font-mono text-[10px] text-[var(--muted-2)]">
+                        {SAMPLE_META[s.id]?.tag ?? s.language}
+                      </span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadAllSamples();
+                      setSamplesMenuOpen(false);
+                    }}
+                    className="w-full border-t border-[var(--border)] px-3 py-1.5 text-left font-mono text-[11px] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                  >
+                    Load all
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setHelpOpen(true)}
               className="btn-ghost"
+              title="Shortcuts"
             >
               ?
-            </button>
-            <span className="mx-1 hidden h-4 w-px bg-[var(--border)] sm:block" />
-            {SAMPLE_SNIPPETS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => loadSample(s, false)}
-                className="btn-secondary"
-                title={SAMPLE_META[s.id]?.blurb ?? s.path}
-              >
-                {s.id.includes("sec")
-                  ? "sec"
-                  : s.language === "javascript"
-                    ? "js"
-                    : s.language === "python"
-                      ? "py"
-                      : s.language === "typescript"
-                        ? "ts"
-                        : s.language.slice(0, 3)}
-              </button>
-            ))}
-            <button type="button" onClick={loadAllSamples} className="btn-secondary">
-              all
             </button>
           </div>
         </div>
@@ -1078,12 +1086,10 @@ export function CodeLensApp() {
             <button
               type="button"
               onClick={() => setFocusNoteOpen((v) => !v)}
-              className={`btn-secondary text-xs ${
-                focusNote.trim() || focusNoteOpen
-                  ? "!border-[var(--accent-border)] !text-[var(--accent)]"
-                  : ""
+              className={`btn-ghost text-xs ${
+                focusNote.trim() || focusNoteOpen ? "text-[var(--accent)]" : ""
               }`}
-              title="Optional focus note for the model"
+              title="Optional focus note"
               disabled={loading}
             >
               note{focusNote.trim() ? " ·" : ""}
@@ -1117,7 +1123,7 @@ export function CodeLensApp() {
                 </>
               ) : (
                 <>
-                  focus analyze
+                  analyze
                   <kbd className="ml-1 hidden opacity-70 sm:inline">⌘↵</kbd>
                 </>
               )}
@@ -1158,12 +1164,19 @@ export function CodeLensApp() {
         )}
 
         {ingestNotes.length > 0 && (
-          <div className="border-t border-[var(--border)] bg-[var(--surface-2)]/50 px-4 py-1.5">
-            {ingestNotes.map((n, i) => (
-              <p key={i} className="text-[11px] text-[var(--accent)]">
-                {n}
-              </p>
-            ))}
+          <div className="flex items-center gap-2 border-t border-[var(--border)] px-4 py-1">
+            <p className="min-w-0 flex-1 truncate font-mono text-[10px] text-[var(--muted)]" title={ingestNotes.join(" · ")}>
+              {ingestNotes[0]}
+              {ingestNotes.length > 1 ? ` · +${ingestNotes.length - 1}` : ""}
+            </p>
+            <button
+              type="button"
+              className="btn-ghost !px-1.5 !py-0.5 text-[10px]"
+              onClick={() => setIngestNotes([])}
+              title="Dismiss"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -1201,7 +1214,6 @@ export function CodeLensApp() {
         <FocusHUD
           target={selectedPath ?? "entire workspace"}
           language={viewerLang}
-          enabledTasks={Array.from(enabledTasks)}
           loading={loading}
           hasResult={Boolean(result)}
           lineCount={lineCount}
@@ -1231,65 +1243,69 @@ export function CodeLensApp() {
               />
             </div>
             {history.length > 0 && (
-              <div className="shrink-0 border-t border-[var(--border)] px-2 py-2">
-                <p className="pane-title mb-1.5 px-1">recent runs · click to restore</p>
-                <ul className="max-h-36 space-y-1 overflow-y-auto">
-                  {history.map((h) => {
-                    const bars = Math.max(1, Math.min(8, Math.round(h.durationMs / 800)));
-                    return (
-                      <li key={h.id}>
-                        <button
-                          type="button"
-                          onClick={() => restoreHistory(h)}
-                          className="flex w-full items-center gap-2 px-1.5 py-1 text-left font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                          title={`${h.tasks.join(", ")} · ${h.depth} · ${h.findingCount} findings · ${(h.durationMs / 1000).toFixed(1)}s`}
-                        >
-                          <span className="inline-flex h-3 items-end">
-                            {Array.from({ length: bars }).map((_, i) => (
-                              <span
-                                key={i}
-                                className="history-bar"
-                                style={{ height: `${4 + i * 1.5}px` }}
-                              />
-                            ))}
-                          </span>
-                          <span className="text-[var(--accent)] tabular-nums">
-                            {(h.durationMs / 1000).toFixed(1)}s
-                          </span>
-                          {h.findingCount > 0 && (
-                            <span className="text-[var(--danger)]">{h.findingCount}</span>
-                          )}
-                          {h.depth === "deep" && (
-                            <span className="text-[var(--warn)]">D</span>
-                          )}
-                          <span className="min-w-0 truncate">{h.target}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
+              <div className="shrink-0 border-t border-[var(--border)] px-2 py-1.5">
+                <p className="pane-title mb-1 px-1">recent</p>
+                <ul className="max-h-28 space-y-0.5 overflow-y-auto">
+                  {history.slice(0, 5).map((h) => (
+                    <li key={h.id}>
+                      <button
+                        type="button"
+                        onClick={() => restoreHistory(h)}
+                        className="flex w-full items-center gap-2 rounded-[var(--radius)] px-1.5 py-1 text-left font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg-dim)]"
+                        title={`${h.tasks.join(", ")} · ${h.findingCount} findings · ${(h.durationMs / 1000).toFixed(1)}s`}
+                      >
+                        <span className="tabular-nums text-[var(--muted-2)]">
+                          {(h.durationMs / 1000).toFixed(1)}s
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{h.target}</span>
+                        {h.findingCount > 0 && (
+                          <span className="text-[var(--muted-2)]">{h.findingCount}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}
             {files.length > 0 && (
               <div className="shrink-0 border-t border-[var(--border)] p-2">
-                <div className="mb-2 flex gap-1.5">
+                <div className="relative" ref={addMenuRef}>
                   <button
                     type="button"
-                    onClick={() => setPasteOpen(true)}
-                    className="btn-secondary flex-1 justify-center text-xs"
+                    onClick={() => setAddMenuOpen((v) => !v)}
+                    className="btn-secondary w-full justify-center text-xs"
+                    disabled={loading}
                   >
-                    Paste
+                    + Add ▾
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setGithubOpen(true)}
-                    className="btn-secondary flex-1 justify-center text-xs"
-                    title="Load GitHub repo"
-                  >
-                    GitHub
-                  </button>
+                  {addMenuOpen && (
+                    <div className="absolute bottom-full left-0 right-0 z-40 mb-1 border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+                      <button
+                        type="button"
+                        className="block w-full px-3 py-1.5 text-left font-mono text-[11px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                        onClick={() => {
+                          setPasteOpen(true);
+                          setAddMenuOpen(false);
+                        }}
+                      >
+                        Paste code
+                      </button>
+                      <button
+                        type="button"
+                        className="block w-full px-3 py-1.5 text-left font-mono text-[11px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                        onClick={() => {
+                          setGithubOpen(true);
+                          setAddMenuOpen(false);
+                        }}
+                      >
+                        GitHub repo
+                      </button>
+                      <div className="border-t border-[var(--border)] px-2 py-2">
+                        <DropZone onFiles={(f) => { setAddMenuOpen(false); void handleFiles(f); }} disabled={loading} compact />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <DropZone onFiles={handleFiles} disabled={loading} compact />
               </div>
             )}
           </aside>
@@ -1298,7 +1314,7 @@ export function CodeLensApp() {
         <main
           className={`${paneClass("code")} relative min-h-[280px] flex-col border-b border-[var(--border)] bg-[var(--code-bg)] lg:min-h-0 lg:border-b-0 lg:border-r`}
         >
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-1.5">
             <div className="flex min-w-0 items-center gap-2">
               {files.length > 1 && selectedFile && (
                 <FileNav
@@ -1307,28 +1323,16 @@ export function CodeLensApp() {
                   onSelect={selectPath}
                 />
               )}
-              <span className="min-w-0 truncate font-mono text-xs text-[var(--muted)]">
+              <span className="min-w-0 truncate font-mono text-[11px] text-[var(--fg-dim)]">
                 {viewerName || "No file selected"}
                 {showingFixed && (
-                  <span className="ml-2 text-[var(--ok)]">· fixed preview</span>
+                  <span className="ml-2 text-[var(--ok)]">· fixed</span>
                 )}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              {files.length > 0 && (
-                <span
-                  className={`signal-bars ${loading ? "signal-live" : ""}`}
-                  title="Signal"
-                  aria-hidden
-                >
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              )}
+            <div className="flex items-center gap-1.5">
               {fixedCode && selectedFile && (
-                <div className="flex border border-[var(--border)]">
+                <div className="flex overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
                   <button
                     type="button"
                     onClick={() => setViewerMode("source")}
@@ -1353,19 +1357,9 @@ export function CodeLensApp() {
                   </button>
                 </div>
               )}
-              {lineCount > 0 && selectedFile && (
-                <span className="font-mono text-[10px] text-[var(--muted-2)]">
-                  {lineCount} lines
-                </span>
-              )}
               {markedLines > 0 && !showingFixed && (
                 <span className="font-mono text-[10px] text-[var(--danger)]">
-                  {markedLines} marked
-                </span>
-              )}
-              {selectedFile && (
-                <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted)]">
-                  {viewerLang}
+                  {markedLines}·
                 </span>
               )}
             </div>
@@ -1402,46 +1396,39 @@ export function CodeLensApp() {
 
                 <SampleCards onLoad={loadSample} disabled={loading} />
 
-                <div className="animate-fade-up stagger-4 flex w-full max-w-[52rem] flex-col gap-2 sm:flex-row">
+                <div className="animate-fade-up stagger-4 flex w-full max-w-[40rem] flex-col gap-2 sm:flex-row sm:items-stretch">
                   <div className="min-w-0 flex-1">
                     <DropZone onFiles={handleFiles} disabled={loading} />
                   </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:w-40">
+                  <div className="flex shrink-0 gap-2 sm:w-36 sm:flex-col">
                     <button
                       type="button"
                       onClick={() => setPasteOpen(true)}
-                      className="btn-secondary w-full justify-center"
+                      className="btn-secondary flex-1 justify-center"
                     >
-                      paste code
+                      paste
                     </button>
                     <button
                       type="button"
                       onClick={() => setGithubOpen(true)}
-                      className="btn-secondary w-full justify-center"
+                      className="btn-secondary flex-1 justify-center"
                       title="⌘⇧G"
                     >
-                      github repo
+                      github
                     </button>
                   </div>
                 </div>
 
-                {/* Floating shortcut dock — empty state only */}
                 <div className="shortcut-dock">
                   <button type="button" className="tip-chip" onClick={() => setCmdOpen(true)}>
                     <span className="text-[var(--accent)]">⌘K</span> cmd
-                  </button>
-                  <button type="button" className="tip-chip" onClick={() => setPasteOpen(true)}>
-                    paste
-                  </button>
-                  <button type="button" className="tip-chip" onClick={() => setGithubOpen(true)}>
-                    <span className="text-[var(--accent)]">⌘⇧G</span> github
                   </button>
                   <button
                     type="button"
                     className="tip-chip"
                     onClick={() => loadSample(SAMPLE_SNIPPETS[0], true)}
                   >
-                    <span className="text-[var(--accent)]">demo</span> js bug
+                    demo
                   </button>
                   <span className="tip-chip">
                     <span className="text-[var(--accent)]">⌘↵</span> run
@@ -1517,15 +1504,9 @@ export function CodeLensApp() {
             result && !loading ? "results-flash" : ""
           }`}
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+          <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-3 py-2">
             <span className="pane-title">analysis</span>
             <div className="flex min-w-0 items-center gap-2">
-              {result && !loading && (
-                <span className="lock-badge">
-                  <span className="status-dot status-dot-ok" />
-                  locked
-                </span>
-              )}
               {result && !loading && (
                 <button
                   type="button"
@@ -1534,13 +1515,6 @@ export function CodeLensApp() {
                 >
                   share
                 </button>
-              )}
-              {lastTarget && result && !loading && (
-                <span className="path-ticker max-w-[9rem] font-mono text-[10px] text-[var(--muted-2)]">
-                  <span className="path-ticker-inner">
-                    {lastTarget}&nbsp;&nbsp;·&nbsp;&nbsp;{lastTarget}
-                  </span>
-                </span>
               )}
               {loading && (
                 <span className="font-mono text-[10px] text-[var(--accent)]">

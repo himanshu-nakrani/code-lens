@@ -25,13 +25,13 @@ export function FindingsNav({ findings, activeIndex, onJump }: FindingsNavProps)
   };
 
   return (
-    <div className="findings-nav flex shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-2 py-1">
-      <span className="font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
+    <div className="findings-nav glass-strip flex shrink-0 items-center gap-2 border-b border-[var(--border)] px-2.5 py-1.5">
+      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted-2)]">
         findings
       </span>
       <button
         type="button"
-        className="btn-ghost !px-1.5 !py-0.5 font-mono text-[10px]"
+        className="btn-ghost findings-nav-btn !px-1.5 !py-0.5 font-mono text-[10px]"
         onClick={() => go(idx - 1)}
         title="Previous finding"
       >
@@ -39,20 +39,20 @@ export function FindingsNav({ findings, activeIndex, onJump }: FindingsNavProps)
       </button>
       <button
         type="button"
-        className="btn-ghost !px-1.5 !py-0.5 font-mono text-[10px]"
+        className="btn-ghost findings-nav-btn !px-1.5 !py-0.5 font-mono text-[10px]"
         onClick={() => go(idx + 1)}
         title="Next finding"
       >
         ↓
       </button>
-      <span className="font-mono text-[10px] tabular-nums text-[var(--fg-dim)]">
+      <span className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)]/60 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-[var(--fg-dim)]">
         {idx + 1}/{lined.length}
       </span>
       {current && (
         <button
           type="button"
           onClick={() => current.line != null && onJump(idx, current.line)}
-          className="min-w-0 flex-1 truncate text-left font-mono text-[10px] text-[var(--accent)] hover:underline"
+          className="min-w-0 flex-1 truncate rounded-[var(--radius)] border border-transparent px-1.5 py-0.5 text-left font-mono text-[10px] text-[var(--accent)] transition hover:border-[var(--accent-border)] hover:bg-[var(--accent-dim)]"
           title={current.title}
         >
           L{current.line} · [{current.severity}] {current.title}

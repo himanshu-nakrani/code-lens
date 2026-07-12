@@ -185,79 +185,54 @@ export function ResultsPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Summary strip */}
-      <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-2)] px-2 py-1.5">
+      {/* Calm summary strip */}
+      <div className="shrink-0 border-b border-[var(--border)] px-2.5 py-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--muted)]">
           {stats && (
             <>
-              {stats.findings > 0 && (
-                <span className="text-[var(--danger)]">
-                  <CountUp value={stats.findings} /> finding
-                  {stats.findings === 1 ? "" : "s"}
-                </span>
-              )}
-              {stats.hasFix && <span className="text-[var(--danger)]">fix</span>}
-              {stats.hasTests && <span className="text-[var(--accent)]">tests</span>}
-              {stats.security > 0 && (
-                <span className="text-[var(--warn)]">
-                  {stats.security} sec
-                </span>
-              )}
-              {stats.improvements > 0 && (
-                <span className="text-[var(--ok)]">
-                  <CountUp value={stats.improvements} /> tips
-                </span>
-              )}
+              <span className={stats.findings > 0 ? "text-[var(--danger)]" : "text-[var(--muted-2)]"}>
+                <CountUp value={stats.findings} /> finding
+                {stats.findings === 1 ? "" : "s"}
+              </span>
               {durationMs != null && (
-                <span className="tabular-nums">{(durationMs / 1000).toFixed(1)}s</span>
+                <span className="tabular-nums text-[var(--muted-2)]">
+                  {(durationMs / 1000).toFixed(1)}s
+                </span>
               )}
               {depth === "deep" && (
                 <span className="text-[var(--warn)]">deep</span>
               )}
             </>
           )}
-          <div className="ml-auto flex gap-1">
-            {onExportMarkdown && (
-              <button type="button" onClick={onExportMarkdown} className="btn-ghost !px-1.5 !py-0.5">
-                md
-              </button>
-            )}
-            {onExportJson && (
-              <button type="button" onClick={onExportJson} className="btn-ghost !px-1.5 !py-0.5">
-                json
-              </button>
-            )}
-            {onExportSarif && (
-              <button
-                type="button"
-                onClick={onExportSarif}
-                className="btn-ghost !px-1.5 !py-0.5"
-                title="SARIF for IDE / CI"
-              >
-                sarif
-              </button>
-            )}
+          <div className="relative ml-auto">
+            <ExportMenu
+              onExportMarkdown={onExportMarkdown}
+              onExportJson={onExportJson}
+              onExportSarif={onExportSarif}
+            />
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex shrink-0 gap-0 overflow-x-auto border-b border-[var(--border)] px-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`shrink-0 border-b-2 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
-              activeTab === tab.id
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-transparent text-[var(--muted)] hover:text-[var(--fg-dim)]"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Tabs only when multiple lenses — avoid chrome for single-task runs */}
+      {tabs.length > 2 && (
+        <div className="flex shrink-0 gap-0 overflow-x-auto border-b border-[var(--border)] px-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`shrink-0 border-b-2 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide transition ${
+                activeTab === tab.id
+                  ? "border-[var(--accent)] text-[var(--accent)]"
+                  : "border-transparent text-[var(--muted)] hover:text-[var(--fg-dim)]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         {scorecard && activeTab === "all" && (
@@ -269,6 +244,7 @@ export function ResultsPanel({
               stats={sourceStats}
               dimensions={scorecard.dimensions}
               severityCounts={scorecard.severityCounts}
+              calm
             />
           </div>
         )}
@@ -635,6 +611,71 @@ function PanelShell({
       </header>
       <div className="p-3">{children}</div>
     </section>
+  );
+}
+
+function ExportMenu({
+  onExportMarkdown,
+  onExportJson,
+  onExportSarif,
+}: {
+  onExportMarkdown?: () => void;
+  onExportJson?: () => void;
+  onExportSarif?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!onExportMarkdown && !onExportJson && !onExportSarif) return null;
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="btn-ghost !px-1.5 !py-0.5"
+        title="Export"
+      >
+        export ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 min-w-[7rem] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+          {onExportMarkdown && (
+            <button
+              type="button"
+              className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+              onClick={() => {
+                onExportMarkdown();
+                setOpen(false);
+              }}
+            >
+              Markdown
+            </button>
+          )}
+          {onExportJson && (
+            <button
+              type="button"
+              className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+              onClick={() => {
+                onExportJson();
+                setOpen(false);
+              }}
+            >
+              JSON
+            </button>
+          )}
+          {onExportSarif && (
+            <button
+              type="button"
+              className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+              onClick={() => {
+                onExportSarif();
+                setOpen(false);
+              }}
+            >
+              SARIF
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

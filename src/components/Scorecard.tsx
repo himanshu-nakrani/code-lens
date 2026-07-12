@@ -11,6 +11,8 @@ interface ScorecardProps {
   stats: CodeStats | null;
   dimensions?: ScorecardData["dimensions"];
   severityCounts?: ScorecardData["severityCounts"];
+  /** When true, start with spectrum collapsed (calm default). */
+  calm?: boolean;
 }
 
 const DIM_LABELS: { key: keyof NonNullable<ScorecardProps["dimensions"]>; label: string }[] = [
@@ -28,8 +30,10 @@ export function Scorecard({
   stats,
   dimensions,
   severityCounts,
+  calm = true,
 }: ScorecardProps) {
   const [display, setDisplay] = useState(0);
+  const [spectrumOpen, setSpectrumOpen] = useState(!calm);
   const tone = score >= 80 ? "ok" : score >= 60 ? "accent" : "danger";
   const stroke =
     tone === "ok"
@@ -53,16 +57,15 @@ export function Scorecard({
     return () => cancelAnimationFrame(raf);
   }, [score]);
 
-  // SVG arc gauge
   const r = 22;
   const c = 2 * Math.PI * r;
   const offset = c - (Math.min(100, Math.max(0, display)) / 100) * c;
 
   return (
-    <div className="scorecard-panel border border-[var(--border)] bg-[var(--surface)] p-3">
+    <div className="scorecard-panel border border-[var(--border)] p-3">
       <div className="flex items-center gap-3">
-        <div className="relative h-16 w-16 shrink-0">
-          <svg viewBox="0 0 56 56" className="h-16 w-16 -rotate-90">
+        <div className="relative h-14 w-14 shrink-0">
+          <svg viewBox="0 0 56 56" className="h-14 w-14 -rotate-90">
             <circle
               cx="28"
               cy="28"
@@ -97,85 +100,78 @@ export function Scorecard({
 
         <div className="min-w-0 flex-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--muted-2)]">
-            quality spectrum
-          </p>
-          <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-            Multi-axis · findings + source shape
+            quality
           </p>
           {stats && (
-            <div className="mt-2 grid grid-cols-4 gap-1">
-              <Metric label="loc" value={String(stats.code)} />
-              <Metric label="fn" value={String(stats.functions)} />
-              <Metric label="cx" value={stats.complexityHint} />
-              <Metric label="br" value={String(stats.branches)} />
+            <p className="mt-1 font-mono text-[11px] text-[var(--muted)]">
+              {stats.code} loc · {stats.functions} fn · {stats.complexityHint} cx
+            </p>
+          )}
+          {severityCounts && (
+            <div className="mt-2">
+              <SeverityStrip counts={severityCounts} />
             </div>
           )}
         </div>
       </div>
 
       {dimensions && (
-        <div className="mt-3 space-y-1.5">
-          {DIM_LABELS.map(({ key, label }) => {
-            const v = dimensions[key] ?? 0;
-            // complexity: high is bad — show inverted color
-            const inverted = key === "complexity";
-            const good = inverted ? v < 40 : v >= 70;
-            const mid = inverted ? v < 65 : v >= 50;
-            const barColor = good
-              ? "var(--ok)"
-              : mid
-                ? "var(--warn)"
-                : "var(--danger)";
-            return (
-              <div key={key} className="flex items-center gap-2">
-                <span className="w-12 shrink-0 font-mono text-[9px] uppercase tracking-wide text-[var(--muted-2)]">
-                  {label}
-                </span>
-                <div className="h-1 min-w-0 flex-1 overflow-hidden bg-[var(--border)]">
-                  <div
-                    className="dim-bar h-full transition-all duration-700"
-                    style={{
-                      width: `${v}%`,
-                      background: barColor,
-                      boxShadow: `0 0 6px ${barColor}`,
-                    }}
-                  />
-                </div>
-                <span className="w-6 shrink-0 text-right font-mono text-[10px] tabular-nums text-[var(--muted)]">
-                  {v}
-                </span>
-              </div>
-            );
-          })}
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setSpectrumOpen((v) => !v)}
+            className="font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)] hover:text-[var(--accent)]"
+          >
+            {spectrumOpen ? "▾ spectrum" : "▸ spectrum"}
+          </button>
+          {spectrumOpen && (
+            <div className="mt-2 space-y-1.5">
+              {DIM_LABELS.map(({ key, label }) => {
+                const v = dimensions[key] ?? 0;
+                const inverted = key === "complexity";
+                const good = inverted ? v < 40 : v >= 70;
+                const mid = inverted ? v < 65 : v >= 50;
+                const barColor = good
+                  ? "var(--ok)"
+                  : mid
+                    ? "var(--warn)"
+                    : "var(--danger)";
+                return (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="w-12 shrink-0 font-mono text-[9px] uppercase tracking-wide text-[var(--muted-2)]">
+                      {label}
+                    </span>
+                    <div className="h-1 min-w-0 flex-1 overflow-hidden bg-[var(--border)]">
+                      <div
+                        className="dim-bar h-full transition-all duration-700"
+                        style={{
+                          width: `${v}%`,
+                          background: barColor,
+                          boxShadow: `0 0 6px ${barColor}`,
+                        }}
+                      />
+                    </div>
+                    <span className="w-6 shrink-0 text-right font-mono text-[10px] tabular-nums text-[var(--muted)]">
+                      {v}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {severityCounts && (
-        <div className="mt-3">
-          <SeverityStrip counts={severityCounts} />
-        </div>
-      )}
-
-      {notes.length > 0 && (
+      {/* Calm: hide redundant tip chips unless spectrum expanded */}
+      {spectrumOpen && notes.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-1.5">
-          {notes.map((n) => (
+          {notes.slice(0, 4).map((n) => (
             <li key={n} className="tip-chip !py-0.5">
               {n}
             </li>
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-[var(--border)] bg-[var(--bg)] px-1.5 py-1 text-center">
-      <div className="font-mono text-[11px] text-[var(--fg)]">{value}</div>
-      <div className="font-mono text-[9px] uppercase tracking-wide text-[var(--muted-2)]">
-        {label}
-      </div>
     </div>
   );
 }
