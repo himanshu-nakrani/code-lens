@@ -33,7 +33,7 @@ export function FindingsNav({ findings, activeIndex, onJump }: FindingsNavProps)
         type="button"
         className="btn-ghost findings-nav-btn !px-1.5 !py-0.5 font-mono text-[10px]"
         onClick={() => go(idx - 1)}
-        title="Previous finding"
+        title="Previous finding (p)"
       >
         ↑
       </button>
@@ -41,7 +41,7 @@ export function FindingsNav({ findings, activeIndex, onJump }: FindingsNavProps)
         type="button"
         className="btn-ghost findings-nav-btn !px-1.5 !py-0.5 font-mono text-[10px]"
         onClick={() => go(idx + 1)}
-        title="Next finding"
+        title="Next finding (n)"
       >
         ↓
       </button>

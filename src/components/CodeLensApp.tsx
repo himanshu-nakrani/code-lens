@@ -125,6 +125,7 @@ export function CodeLensApp() {
   const [workspaceSource, setWorkspaceSource] = useState<string | null>(null);
   const [samplesMenuOpen, setSamplesMenuOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const samplesMenuRef = useRef<HTMLDivElement>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const toastId = useRef(0);
@@ -1265,27 +1266,38 @@ export function CodeLensApp() {
             </div>
             {history.length > 0 && (
               <div className="shrink-0 border-t border-[var(--border)] px-2 py-1.5">
-                <p className="pane-title mb-1 px-1">recent</p>
-                <ul className="max-h-28 space-y-0.5 overflow-y-auto">
-                  {history.slice(0, 5).map((h) => (
-                    <li key={h.id}>
-                      <button
-                        type="button"
-                        onClick={() => restoreHistory(h)}
-                        className="flex w-full items-center gap-2 rounded-[var(--radius)] px-1.5 py-1 text-left font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg-dim)]"
-                        title={`${h.tasks.join(", ")} · ${h.findingCount} findings · ${(h.durationMs / 1000).toFixed(1)}s`}
-                      >
-                        <span className="tabular-nums text-[var(--muted-2)]">
-                          {(h.durationMs / 1000).toFixed(1)}s
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">{h.target}</span>
-                        {h.findingCount > 0 && (
-                          <span className="text-[var(--muted-2)]">{h.findingCount}</span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen((v) => !v)}
+                  className="pane-title mb-1 flex w-full items-center justify-between px-1 text-left hover:text-[var(--muted)]"
+                >
+                  <span>recent</span>
+                  <span className="font-mono text-[10px] text-[var(--muted-2)]">
+                    {historyOpen ? "▾" : `▸ ${history.length}`}
+                  </span>
+                </button>
+                {historyOpen && (
+                  <ul className="max-h-28 space-y-0.5 overflow-y-auto">
+                    {history.slice(0, 5).map((h) => (
+                      <li key={h.id}>
+                        <button
+                          type="button"
+                          onClick={() => restoreHistory(h)}
+                          className="flex w-full items-center gap-2 rounded-[var(--radius)] px-1.5 py-1 text-left font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg-dim)]"
+                          title={`${h.tasks.join(", ")} · ${h.findingCount} findings · ${(h.durationMs / 1000).toFixed(1)}s`}
+                        >
+                          <span className="tabular-nums text-[var(--muted-2)]">
+                            {(h.durationMs / 1000).toFixed(1)}s
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">{h.target}</span>
+                          {h.findingCount > 0 && (
+                            <span className="text-[var(--muted-2)]">{h.findingCount}</span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
             {files.length > 0 && (
