@@ -1628,6 +1628,25 @@ textarea:focus {
   opacity: 1;
 }
 
+/* Respect reduced motion — calm by default for vestibular comfort */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .scan-beam,
+  .analyze-meter > span,
+  .scorecard-panel::after,
+  .aperture-logo-spin .aperture-blades {
+    animation: none !important;
+  }
+}
+
 /* Toast polish if present */
 .toast-stack,
 [data-toast] {

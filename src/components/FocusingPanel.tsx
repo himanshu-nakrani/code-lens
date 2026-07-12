@@ -3,13 +3,10 @@
 import { ALL_TASKS, type TaskId } from "@/lib/types";
 
 const STEPS = [
-  "calibrating aperture…",
-  "reading source structure…",
-  "querying grok-4.5…",
-  "ranking severities…",
-  "mapping line targets…",
-  "resolving findings…",
-  "assembling multi-axis report…",
+  "reading source…",
+  "querying model…",
+  "ranking findings…",
+  "assembling report…",
 ];
 
 interface FocusingPanelProps {
@@ -68,7 +65,7 @@ export function FocusingPanel({
         )}
       </div>
 
-      <div className="mt-8 space-y-2">
+      <div className="mt-8 space-y-1.5">
         {enabledTasks.map((id, i) => {
           const meta = ALL_TASKS.find((t) => t.id === id);
           const p = Math.min(100, ((elapsedMs / 1000) * 16 + i * 14) % 100);
@@ -77,7 +74,7 @@ export function FocusingPanel({
           return (
             <div
               key={id}
-              className="border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 animate-fade-up"
+              className="border border-[var(--border)] bg-[var(--surface)]/80 px-3 py-2 animate-fade-up"
               style={{ animationDelay: `${i * 0.06}s` }}
             >
               <div className="mb-1.5 flex items-center justify-between gap-2">

@@ -78,9 +78,22 @@ export function ResultsPanel({
   }, [loading]);
 
   useEffect(() => {
-    if (result && enabledTasks.length === 1) {
+    if (!result) return;
+    if (enabledTasks.length === 1) {
       setActiveTab(enabledTasks[0]);
-    } else if (result) {
+      return;
+    }
+    // Prefer the tab with the most actionable findings first
+    const bugN =
+      result.bug_fixes?.structured_issues?.length ??
+      result.bug_fixes?.issues?.length ??
+      0;
+    const secN = result.security?.findings?.length ?? 0;
+    if (bugN > 0 && enabledTasks.includes("fix_bugs")) {
+      setActiveTab("fix_bugs");
+    } else if (secN > 0 && enabledTasks.includes("security_audit")) {
+      setActiveTab("security_audit");
+    } else {
       setActiveTab("all");
     }
   }, [result, enabledTasks]);

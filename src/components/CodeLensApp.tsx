@@ -199,6 +199,13 @@ export function CodeLensApp() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // Auto-dismiss ingest banner after a few seconds
+  useEffect(() => {
+    if (ingestNotes.length === 0) return;
+    const id = window.setTimeout(() => setIngestNotes([]), 4500);
+    return () => window.clearTimeout(id);
+  }, [ingestNotes]);
+
   const selectedFile = useMemo(
     () => (selectedPath ? files.find((f) => f.path === selectedPath) ?? null : null),
     [files, selectedPath]
@@ -566,6 +573,7 @@ export function CodeLensApp() {
         setResult(data.result);
         setRawText(data.rawText ?? null);
         setLockBurstAt(Date.now());
+        setFocusNoteOpen(false);
         const entry = buildHistoryEntry({
           target,
           tasks: Array.from(tasks),
@@ -834,6 +842,15 @@ export function CodeLensApp() {
               selectPath(files[idx + 1].path);
             }
           }
+          // Next / previous finding with line target
+          if ((e.key === "n" || e.key === "N" || e.key === "p" || e.key === "P") && lineFindings.length > 0) {
+            e.preventDefault();
+            const delta = e.key === "n" || e.key === "N" ? 1 : -1;
+            const next =
+              (findingNavIndex + delta + lineFindings.length) % lineFindings.length;
+            const f = lineFindings[next];
+            if (f?.line != null) jumpToFinding(next, f.line);
+          }
         }
       }
     };
@@ -849,6 +866,9 @@ export function CodeLensApp() {
     selectedPath,
     loadSample,
     selectPath,
+    lineFindings,
+    findingNavIndex,
+    jumpToFinding,
   ]);
 
   const canAnalyze = files.length > 0 && enabledTasks.size > 0 && !loading;
@@ -1210,7 +1230,8 @@ export function CodeLensApp() {
         </div>
       </header>
 
-      {files.length > 0 && (
+      {/* HUD only for multi-file / workspace focus — single file path is in the code header */}
+      {files.length > 1 && (
         <FocusHUD
           target={selectedPath ?? "entire workspace"}
           language={viewerLang}
