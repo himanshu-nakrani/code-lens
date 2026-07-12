@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { parseGitHubInput } from "@/lib/github-url";
+import {
+  loadGitHubRecents,
+  pushGitHubRecent,
+  type GitHubRecent,
+} from "@/lib/github-recents";
 import type { CodeFile } from "@/lib/types";
 
 export type GitHubLoadResult = {
@@ -31,12 +36,14 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
   const [subdir, setSubdir] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recents, setRecents] = useState<GitHubRecent[]>([]);
 
   const preview = input.trim() ? parseGitHubInput(input) : null;
 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setRecents(loadGitHubRecents());
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !loading) onClose();
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !loading) {
@@ -50,6 +57,13 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
   }, [open, loading, input, ref, subdir]);
 
   if (!open) return null;
+
+  function applyRecent(r: GitHubRecent) {
+    setInput(r.input);
+    setRef(r.ref || "");
+    setSubdir(r.subdir || "");
+    setError(null);
+  }
 
   async function submit() {
     if (disabled || loading) return;
@@ -84,6 +98,18 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
         setLoading(false);
         return;
       }
+      const list = pushGitHubRecent({
+        input:
+          subdir.trim() || ref.trim()
+            ? `${data.repo.owner}/${data.repo.name}`
+            : input.trim(),
+        owner: data.repo.owner,
+        name: data.repo.name,
+        ref: ref.trim() || data.repo.ref,
+        subdir: subdir.trim() || undefined,
+        htmlUrl: data.repo.htmlUrl,
+      });
+      setRecents(list);
       onLoaded({
         files: data.files,
         repo: data.repo,
@@ -201,9 +227,35 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
             </div>
           )}
 
+          {recents.length > 0 && (
+            <div>
+              <p className="mb-1.5 font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
+                recent
+              </p>
+              <ul className="max-h-28 space-y-1 overflow-y-auto">
+                {recents.map((r) => (
+                  <li key={`${r.owner}/${r.name}/${r.ref}/${r.subdir}/${r.at}`}>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => applyRecent(r)}
+                      className="flex w-full items-center gap-2 border border-[var(--border)] bg-[var(--code-bg)] px-2 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] transition hover:border-[var(--accent-border)] hover:text-[var(--accent)]"
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {r.owner}/{r.name}
+                        {r.ref ? `@${r.ref}` : ""}
+                        {r.subdir ? ` · ${r.subdir}` : ""}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <p className="text-[10px] leading-relaxed text-[var(--muted-2)]">
-            Loads text/source files only (skips node_modules, locks, binaries). Caps match
-            local upload: 80 files · 200 KB each · 2 MB total.
+            Loads text/source files only (skips node_modules, locks, binaries). Prefers app
+            source over tests/docs under size caps · 80 files · 200 KB · 2 MB.
           </p>
         </div>
 

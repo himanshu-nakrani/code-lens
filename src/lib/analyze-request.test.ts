@@ -113,6 +113,18 @@ describe("validateAnalyzeRequest (shipped)", () => {
     if (!r.ok) return;
     expect(r.depth).toBe("standard");
   });
+
+  it("accepts and trims focusNote", () => {
+    const r = validateAnalyzeRequest({
+      files: [goodFile],
+      tasks: ["security_audit"],
+      selectedPath: "a.js",
+      focusNote: "  look for injection  ",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.focusNote).toBe("look for injection");
+  });
 });
 
 describe("redactSecrets (shipped)", () => {

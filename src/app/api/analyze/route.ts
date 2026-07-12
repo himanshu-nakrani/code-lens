@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     tasks: validated.tasks,
     multiFileContext: validated.multiFileContext,
     depth: validated.depth,
+    focusNote: validated.focusNote,
   });
 
   try {

@@ -20,6 +20,7 @@ export const MAX_CODE_CHARS = 100_000;
 export const MAX_CONTEXT_CHARS = 40_000;
 /** Deep mode includes more multi-file context. */
 export const MAX_CONTEXT_CHARS_DEEP = 80_000;
+export const MAX_FOCUS_NOTE_CHARS = 2_000;
 
 export type AnalyzeFileInput = {
   name: string;
@@ -38,6 +39,7 @@ export type ValidateAnalyzeOk = {
   code: string;
   multiFileContext?: string;
   depth: AnalysisDepth;
+  focusNote?: string;
 };
 
 export type ValidateAnalyzeErr = {
@@ -138,6 +140,11 @@ export function validateAnalyzeRequest(body: unknown): ValidateAnalyzeResult {
     };
   }
 
+  let focusNote: string | undefined;
+  if (typeof req.focusNote === "string" && req.focusNote.trim()) {
+    focusNote = req.focusNote.trim().slice(0, MAX_FOCUS_NOTE_CHARS);
+  }
+
   return {
     ok: true,
     tasks,
@@ -148,6 +155,7 @@ export function validateAnalyzeRequest(body: unknown): ValidateAnalyzeResult {
     code,
     multiFileContext,
     depth,
+    focusNote,
   };
 }
 

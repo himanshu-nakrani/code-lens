@@ -16,6 +16,9 @@ interface StatusBarProps {
   hasResult: boolean;
   hasApiKey?: boolean | null;
   sourceStats?: CodeStats | null;
+  workspaceSource?: string | null;
+  findingCount?: number;
+  depth?: string;
 }
 
 export function StatusBar({
@@ -30,6 +33,9 @@ export function StatusBar({
   hasResult,
   hasApiKey,
   sourceStats,
+  workspaceSource,
+  findingCount = 0,
+  depth,
 }: StatusBarProps) {
   return (
     <footer className="status-bar relative z-20 shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
@@ -47,6 +53,15 @@ export function StatusBar({
           <span className={hasApiKey ? "text-[var(--ok)]" : "text-[var(--danger)]"}>
             {hasApiKey ? "key·ok" : "key·missing"}
           </span>
+        )}
+        {workspaceSource && (
+          <span className="max-w-[10rem] truncate text-[var(--accent)]" title={workspaceSource}>
+            {workspaceSource}
+          </span>
+        )}
+        {depth === "deep" && <span className="text-[var(--warn)]">deep</span>}
+        {findingCount > 0 && (
+          <span className="text-[var(--danger)]">{findingCount} findings</span>
         )}
         <span>
           <span className="text-[var(--muted-2)]">n</span>={fileCount}

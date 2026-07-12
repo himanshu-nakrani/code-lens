@@ -57,6 +57,18 @@ type TreeEntry = {
   url?: string;
 };
 
+/** Lower = higher priority when packing under size/count caps. */
+function filePriority(path: string): number {
+  const p = path.toLowerCase();
+  if (/\.(test|spec)\.[jt]sx?$/.test(p) || /_test\.py$/.test(p) || /\/tests?\//.test(p)) {
+    return 3;
+  }
+  if (/\.(md|txt|rst)$/.test(p) || p.startsWith("docs/")) return 4;
+  if (/\.(json|ya?ml|toml|lock)$/.test(p)) return 2;
+  if (/\.(ts|tsx|js|jsx|py|go|rs|java|kt|swift|rb|php|c|cpp|h|cs)$/.test(p)) return 0;
+  return 1;
+}
+
 function authHeaders(): HeadersInit {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
@@ -219,8 +231,13 @@ export async function ingestGitHubRepo(
     candidates.push({ path: entry.path, size });
   }
 
-  // Prefer smaller source files first so we pack more under the total cap
-  candidates.sort((a, b) => a.size - b.size || a.path.localeCompare(b.path));
+  // Prefer primary source over tests/docs, then smaller files under the total cap
+  candidates.sort((a, b) => {
+    const pa = filePriority(a.path);
+    const pb = filePriority(b.path);
+    if (pa !== pb) return pa - pb;
+    return a.size - b.size || a.path.localeCompare(b.path);
+  });
 
   const selected: Candidate[] = [];
   let plannedBytes = 0;

@@ -86,6 +86,22 @@ export interface AnalyzeRequest {
   selectedPath: string | null;
   tasks: TaskId[];
   depth?: AnalysisDepth;
+  /** Optional analyst focus note — steers the model without changing lenses */
+  focusNote?: string;
+}
+
+/** One restorable analysis run (in-session history). */
+export interface AnalysisHistoryEntry {
+  id: number;
+  target: string;
+  tasks: TaskId[];
+  at: number;
+  durationMs: number;
+  depth: AnalysisDepth;
+  focusNote?: string;
+  result: AnalysisResult;
+  findingCount: number;
+  worstSeverity?: string;
 }
 
 export interface AnalyzeSuccess {

@@ -135,6 +135,7 @@ export function buildAnalysisPrompt(opts: {
   tasks: string[];
   multiFileContext?: string;
   depth?: AnalysisDepth;
+  focusNote?: string;
 }): string {
   const taskSet = new Set(opts.tasks);
   const depth = opts.depth ?? "standard";
@@ -206,6 +207,11 @@ export function buildAnalysisPrompt(opts: {
     ? `\nAnalysis depth: DEEP — be exhaustive. Cite line numbers aggressively. Prefer false negatives over vague filler. If no issues exist, say so clearly with empty arrays.\n`
     : `\nAnalysis depth: STANDARD — precise and actionable, not verbose.\n`;
 
+  const focusBlock =
+    opts.focusNote && opts.focusNote.trim()
+      ? `\nAnalyst focus note (prioritize this guidance while still fulfilling requested tasks):\n"""\n${opts.focusNote.trim()}\n"""\n`
+      : "";
+
   const contextBlock = opts.multiFileContext
     ? `\nAdditional codebase context (other files, may be truncated):\n\`\`\`\n${opts.multiFileContext}\n\`\`\`\n`
     : "";
@@ -228,7 +234,7 @@ ${want.join(",\n")}
 }
 
 Tasks requested: ${opts.tasks.join(", ")}
-${depthBlock}
+${depthBlock}${focusBlock}
 Primary file: ${opts.filename}
 Language: ${opts.language}
 ${contextBlock}

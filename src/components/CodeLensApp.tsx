@@ -22,6 +22,7 @@ import { FocusHUD } from "./FocusHUD";
 import { LockBurst } from "./LockBurst";
 import { GrainOverlay } from "./GrainOverlay";
 import { FileNav } from "./FileNav";
+import { FindingsNav } from "./FindingsNav";
 import { SAMPLE_META, SAMPLE_SNIPPETS } from "@/lib/samples";
 import { ingestFiles } from "@/lib/files";
 import { downloadText, resultToMarkdown } from "@/lib/export";
@@ -35,9 +36,12 @@ import {
 import {
   collectAllFindings,
   findingsWithLines,
+  sortBySeverity,
 } from "@/lib/findings";
+import { buildHistoryEntry, prependHistory, resultToSarif } from "@/lib/history";
 import type {
   AnalysisDepth,
+  AnalysisHistoryEntry,
   AnalysisResult,
   AnalyzeResponse,
   CodeFile,
@@ -100,9 +104,7 @@ export function CodeLensApp() {
   const [durationMs, setDurationMs] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [history, setHistory] = useState<
-    Array<{ id: number; target: string; tasks: TaskId[]; at: number; durationMs: number }>
-  >([]);
+  const [history, setHistory] = useState<AnalysisHistoryEntry[]>([]);
   const [mobilePane, setMobilePane] = useState<MobilePane>("code");
   const [pasteOpen, setPasteOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
@@ -117,6 +119,10 @@ export function CodeLensApp() {
   const [lockBurstAt, setLockBurstAt] = useState<number | null>(null);
   const [depth, setDepth] = useState<AnalysisDepth>("standard");
   const [highlightLine, setHighlightLine] = useState<number | null>(null);
+  const [focusNote, setFocusNote] = useState("");
+  const [focusNoteOpen, setFocusNoteOpen] = useState(false);
+  const [findingNavIndex, setFindingNavIndex] = useState(0);
+  const [workspaceSource, setWorkspaceSource] = useState<string | null>(null);
   const toastId = useRef(0);
   const analyzeRef = useRef<() => void>(() => {});
   const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
@@ -220,10 +226,14 @@ export function CodeLensApp() {
     () => (result && !showingFixed ? collectAllFindings(result) : []),
     [result, showingFixed]
   );
-  const markedLines = useMemo(
-    () => findingsWithLines(annotations).length,
+  const lineFindings = useMemo(
+    () =>
+      sortBySeverity(findingsWithLines(annotations)).filter(
+        (f) => typeof f.line === "number" && f.line > 0
+      ),
     [annotations]
   );
+  const markedLines = lineFindings.length;
 
   const selectPath = useCallback((path: string | null) => {
     setSelectedPath(path);
@@ -239,6 +249,14 @@ export function CodeLensApp() {
     setFindOpen(false);
   }, []);
 
+  const jumpToFinding = useCallback(
+    (index: number, line: number) => {
+      setFindingNavIndex(index);
+      jumpToLine(line);
+    },
+    [jumpToLine]
+  );
+
   const pushToast = useCallback((kind: ToastMessage["kind"], text: string) => {
     const id = ++toastId.current;
     setToasts((prev) => [...prev.slice(-4), { id, kind, text }]);
@@ -247,6 +265,30 @@ export function CodeLensApp() {
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const restoreHistory = useCallback(
+    (entry: AnalysisHistoryEntry) => {
+      setResult(entry.result);
+      setLastTarget(entry.target);
+      setDurationMs(entry.durationMs);
+      setDepth(entry.depth);
+      if (entry.focusNote) {
+        setFocusNote(entry.focusNote);
+        setFocusNoteOpen(true);
+      }
+      setEnabledTasks(new Set(entry.tasks));
+      setError(null);
+      setParseError(false);
+      setRawText(null);
+      setFindingNavIndex(0);
+      setViewerMode("source");
+      setMobilePane("results");
+      const firstLine = findingsWithLines(collectAllFindings(entry.result))[0]?.line;
+      if (firstLine) setHighlightLine(firstLine);
+      pushToast("info", `Restored run · ${entry.target}`);
+    },
+    [pushToast]
+  );
 
   useEffect(() => {
     if (!loading) return;
@@ -265,6 +307,7 @@ export function CodeLensApp() {
       setParseError(false);
       setRawText(null);
       setDurationMs(null);
+      setWorkspaceSource("local upload");
       setMobilePane("code");
 
       const notes: string[] = [];
@@ -312,6 +355,7 @@ export function CodeLensApp() {
       setResult(null);
       setError(null);
       setIngestNotes([`Pasted ${path}`]);
+      setWorkspaceSource("paste");
       setMobilePane("code");
       pushToast("success", `Added ${file.name}`);
     },
@@ -332,6 +376,7 @@ export function CodeLensApp() {
       setMobilePane("code");
 
       const label = `${res.repo.owner}/${res.repo.name}@${res.repo.ref}`;
+      setWorkspaceSource(`github:${label}`);
       const notes: string[] = [
         `Loaded ${res.files.length} file${res.files.length === 1 ? "" : "s"} from ${label}`,
       ];
@@ -370,6 +415,7 @@ export function CodeLensApp() {
       setIngestNotes([
         `Loaded sample: ${sample.name}${meta ? ` · ${meta.tag}` : ""}`,
       ]);
+      setWorkspaceSource(`sample:${sample.name}`);
       setMobilePane("code");
       pushToast("info", `Sample loaded: ${sample.name}`);
 
@@ -389,6 +435,7 @@ export function CodeLensApp() {
     setParseError(false);
     setRawText(null);
     setDurationMs(null);
+    setWorkspaceSource("samples");
     setIngestNotes([`Loaded ${all.length} sample snippets`]);
     pushToast("info", "All samples loaded");
   }, [pushToast, selectPath]);
@@ -403,6 +450,9 @@ export function CodeLensApp() {
     setDurationMs(null);
     setIngestNotes([]);
     setLastTarget(null);
+    setWorkspaceSource(null);
+    setHighlightLine(null);
+    setFindingNavIndex(0);
     clearWorkspace();
   }, [selectPath]);
 
@@ -442,10 +492,12 @@ export function CodeLensApp() {
       setViewerMode("source");
       setFindOpen(false);
       setHighlightLine(null);
+      setFindingNavIndex(0);
       const target = path ?? "entire codebase";
       setLastTarget(target);
       setMobilePane("results");
       const started = Date.now();
+      const note = focusNote.trim() || undefined;
 
       try {
         const payload = {
@@ -458,6 +510,7 @@ export function CodeLensApp() {
           selectedPath: path,
           tasks: Array.from(tasks),
           depth: analysisDepth,
+          focusNote: note,
         };
 
         const res = await fetch("/api/analyze", {
@@ -494,19 +547,21 @@ export function CodeLensApp() {
         setResult(data.result);
         setRawText(data.rawText ?? null);
         setLockBurstAt(Date.now());
-        setHistory((h) =>
-          [
-            {
-              id: Date.now(),
-              target,
-              tasks: Array.from(tasks),
-              at: Date.now(),
-              durationMs: took,
-            },
-            ...h,
-          ].slice(0, 8)
-        );
-        const findingCount = collectAllFindings(data.result).length;
+        const entry = buildHistoryEntry({
+          target,
+          tasks: Array.from(tasks),
+          durationMs: took,
+          depth: analysisDepth,
+          focusNote: note,
+          result: data.result,
+        });
+        setHistory((h) => prependHistory(h, entry));
+        const findingCount = entry.findingCount;
+        const first = findingsWithLines(collectAllFindings(data.result))[0];
+        if (first?.line) {
+          setHighlightLine(first.line);
+          setFindingNavIndex(0);
+        }
         pushToast(
           "success",
           findingCount
@@ -530,7 +585,7 @@ export function CodeLensApp() {
         }
       }
     },
-    [pushToast, depth]
+    [pushToast, depth, focusNote]
   );
 
   const analyze = useCallback(() => {
@@ -633,6 +688,7 @@ export function CodeLensApp() {
           language: viewerLang,
           tasks: Array.from(enabledTasks),
           depth,
+          focusNote: focusNote.trim() || undefined,
           durationMs,
           result,
         },
@@ -642,7 +698,22 @@ export function CodeLensApp() {
       "application/json"
     );
     pushToast("success", "Exported JSON");
-  }, [result, lastTarget, viewerLang, enabledTasks, depth, durationMs, pushToast]);
+  }, [result, lastTarget, viewerLang, enabledTasks, depth, focusNote, durationMs, pushToast]);
+
+  const exportSarif = useCallback(() => {
+    if (!result) return;
+    const safe = (lastTarget ?? "analysis").replace(/[^\w.-]+/g, "_");
+    const sarif = resultToSarif(result, {
+      target: lastTarget ?? viewerName ?? "code",
+      language: viewerLang,
+    });
+    downloadText(
+      `code-lens-${safe}.sarif.json`,
+      JSON.stringify(sarif, null, 2),
+      "application/sarif+json"
+    );
+    pushToast("success", "Exported SARIF");
+  }, [result, lastTarget, viewerName, viewerLang, pushToast]);
 
   const copyShareSummary = useCallback(async () => {
     if (!result) {
@@ -851,6 +922,18 @@ export function CodeLensApp() {
         run: () => exportJson(),
       },
       {
+        id: "export-sarif",
+        label: "Export findings as SARIF",
+        group: "Export",
+        run: () => exportSarif(),
+      },
+      {
+        id: "focus-note",
+        label: focusNoteOpen ? "Hide focus note" : "Edit analysis focus note…",
+        group: "Analysis",
+        run: () => setFocusNoteOpen((v) => !v),
+      },
+      {
         id: "share",
         label: "Copy share summary",
         group: "Export",
@@ -871,9 +954,11 @@ export function CodeLensApp() {
       loadAllSamples,
       exportMarkdown,
       exportJson,
+      exportSarif,
       copyShareSummary,
       focusMode,
       depth,
+      focusNoteOpen,
     ]
   );
 
@@ -990,6 +1075,19 @@ export function CodeLensApp() {
             disabled={loading}
           />
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFocusNoteOpen((v) => !v)}
+              className={`btn-secondary text-xs ${
+                focusNote.trim() || focusNoteOpen
+                  ? "!border-[var(--accent-border)] !text-[var(--accent)]"
+                  : ""
+              }`}
+              title="Optional focus note for the model"
+              disabled={loading}
+            >
+              note{focusNote.trim() ? " ·" : ""}
+            </button>
             {files.length > 0 && (
               <button
                 type="button"
@@ -1026,6 +1124,38 @@ export function CodeLensApp() {
             </button>
           </div>
         </div>
+
+        {focusNoteOpen && (
+          <div className="border-t border-[var(--border)] bg-[var(--surface-2)]/60 px-4 py-2">
+            <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
+              focus note · steers analysis without changing lenses
+            </label>
+            <textarea
+              value={focusNote}
+              onChange={(e) => setFocusNote(e.target.value.slice(0, 2000))}
+              disabled={loading}
+              rows={2}
+              spellCheck={false}
+              placeholder='e.g. "Focus on auth boundaries and injection surfaces in this module"'
+              className="w-full resize-y border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-[var(--fg-dim)] outline-none focus:border-[var(--accent-border)]"
+            />
+            <div className="mt-1 flex items-center justify-between">
+              <span className="font-mono text-[10px] text-[var(--muted-2)]">
+                {focusNote.length}/2000
+              </span>
+              {focusNote.trim() && (
+                <button
+                  type="button"
+                  className="btn-ghost !px-1.5 !py-0.5 text-[10px]"
+                  onClick={() => setFocusNote("")}
+                  disabled={loading}
+                >
+                  clear note
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {ingestNotes.length > 0 && (
           <div className="border-t border-[var(--border)] bg-[var(--surface-2)]/50 px-4 py-1.5">
@@ -1102,29 +1232,38 @@ export function CodeLensApp() {
             </div>
             {history.length > 0 && (
               <div className="shrink-0 border-t border-[var(--border)] px-2 py-2">
-                <p className="pane-title mb-1.5 px-1">recent runs</p>
-                <ul className="max-h-28 space-y-1 overflow-y-auto">
+                <p className="pane-title mb-1.5 px-1">recent runs · click to restore</p>
+                <ul className="max-h-36 space-y-1 overflow-y-auto">
                   {history.map((h) => {
                     const bars = Math.max(1, Math.min(8, Math.round(h.durationMs / 800)));
                     return (
-                      <li
-                        key={h.id}
-                        className="flex items-center gap-2 px-1.5 py-1 font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                        title={`${h.tasks.join(", ")} · ${(h.durationMs / 1000).toFixed(1)}s`}
-                      >
-                        <span className="inline-flex h-3 items-end">
-                          {Array.from({ length: bars }).map((_, i) => (
-                            <span
-                              key={i}
-                              className="history-bar"
-                              style={{ height: `${4 + i * 1.5}px` }}
-                            />
-                          ))}
-                        </span>
-                        <span className="text-[var(--accent)] tabular-nums">
-                          {(h.durationMs / 1000).toFixed(1)}s
-                        </span>
-                        <span className="min-w-0 truncate">{h.target}</span>
+                      <li key={h.id}>
+                        <button
+                          type="button"
+                          onClick={() => restoreHistory(h)}
+                          className="flex w-full items-center gap-2 px-1.5 py-1 text-left font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                          title={`${h.tasks.join(", ")} · ${h.depth} · ${h.findingCount} findings · ${(h.durationMs / 1000).toFixed(1)}s`}
+                        >
+                          <span className="inline-flex h-3 items-end">
+                            {Array.from({ length: bars }).map((_, i) => (
+                              <span
+                                key={i}
+                                className="history-bar"
+                                style={{ height: `${4 + i * 1.5}px` }}
+                              />
+                            ))}
+                          </span>
+                          <span className="text-[var(--accent)] tabular-nums">
+                            {(h.durationMs / 1000).toFixed(1)}s
+                          </span>
+                          {h.findingCount > 0 && (
+                            <span className="text-[var(--danger)]">{h.findingCount}</span>
+                          )}
+                          {h.depth === "deep" && (
+                            <span className="text-[var(--warn)]">D</span>
+                          )}
+                          <span className="min-w-0 truncate">{h.target}</span>
+                        </button>
                       </li>
                     );
                   })}
@@ -1231,6 +1370,13 @@ export function CodeLensApp() {
               )}
             </div>
           </div>
+          {selectedFile && lineFindings.length > 0 && !showingFixed && (
+            <FindingsNav
+              findings={lineFindings}
+              activeIndex={findingNavIndex}
+              onJump={jumpToFinding}
+            />
+          )}
           <div className="relative min-h-0 flex-1 p-2">
             <CodeSearch
               code={viewerCode}
@@ -1433,7 +1579,11 @@ export function CodeLensApp() {
               }
               onCancel={loading ? cancelAnalyze : undefined}
               onAnalyze={canAnalyze ? analyze : undefined}
-              onJumpToLine={jumpToLine}
+              onJumpToLine={(line) => {
+                const idx = lineFindings.findIndex((f) => f.line === line);
+                jumpToFinding(idx >= 0 ? idx : 0, line);
+              }}
+              onExportSarif={result ? exportSarif : undefined}
             />
           </div>
         </aside>
@@ -1451,6 +1601,9 @@ export function CodeLensApp() {
         hasResult={Boolean(result)}
         hasApiKey={hasApiKey}
         sourceStats={sourceStats}
+        workspaceSource={workspaceSource}
+        findingCount={result ? collectAllFindings(result).length : 0}
+        depth={depth}
       />
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />

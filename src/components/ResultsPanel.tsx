@@ -32,6 +32,7 @@ interface ResultsPanelProps {
   onAddTests?: (code: string, framework: string) => void;
   onExportMarkdown?: () => void;
   onExportJson?: () => void;
+  onExportSarif?: () => void;
   onRetry?: () => void;
   onCancel?: () => void;
   onAnalyze?: () => void;
@@ -56,6 +57,7 @@ export function ResultsPanel({
   onAddTests,
   onExportMarkdown,
   onExportJson,
+  onExportSarif,
   onRetry,
   onCancel,
   onAnalyze,
@@ -223,6 +225,16 @@ export function ResultsPanel({
             {onExportJson && (
               <button type="button" onClick={onExportJson} className="btn-ghost !px-1.5 !py-0.5">
                 json
+              </button>
+            )}
+            {onExportSarif && (
+              <button
+                type="button"
+                onClick={onExportSarif}
+                className="btn-ghost !px-1.5 !py-0.5"
+                title="SARIF for IDE / CI"
+              >
+                sarif
               </button>
             )}
           </div>
