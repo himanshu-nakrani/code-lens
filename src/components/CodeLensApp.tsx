@@ -684,23 +684,26 @@ export function CodeLensApp() {
         setCmdOpen(true);
         return;
       }
-      if (meta && e.key === "Enter" && !pasteOpen && !cmdOpen) {
+      // Block global shortcuts while any modal/palette is open (paste, cmd, github, help)
+      const modalOpen = pasteOpen || cmdOpen || githubOpen || helpOpen;
+
+      if (meta && e.key === "Enter" && !modalOpen) {
         e.preventDefault();
         if (!loading) analyzeRef.current();
         return;
       }
-      if (meta && e.key.toLowerCase() === "f" && !inInput) {
+      if (meta && e.key.toLowerCase() === "f" && !inInput && !modalOpen) {
         e.preventDefault();
         setFindOpen((v) => !v);
         setMobilePane("code");
         return;
       }
-      if (meta && e.shiftKey && (e.key === "p" || e.key === "P")) {
+      if (meta && e.shiftKey && (e.key === "p" || e.key === "P") && !modalOpen) {
         e.preventDefault();
         setPasteOpen(true);
         return;
       }
-      if (meta && e.shiftKey && (e.key === "g" || e.key === "G")) {
+      if (meta && e.shiftKey && (e.key === "g" || e.key === "G") && !modalOpen) {
         e.preventDefault();
         setGithubOpen(true);
         return;
@@ -719,7 +722,7 @@ export function CodeLensApp() {
         return;
       }
       // Number keys: samples when empty; [ ] file nav; 1-3 panes when loaded
-      if (!inInput && !meta && !e.altKey && !pasteOpen && !cmdOpen) {
+      if (!inInput && !meta && !e.altKey && !modalOpen) {
         if (files.length === 0) {
           const sampleIdx = parseInt(e.key, 10) - 1;
           if (sampleIdx >= 0 && sampleIdx < SAMPLE_SNIPPETS.length && e.key.length === 1) {
@@ -746,7 +749,17 @@ export function CodeLensApp() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [loading, pasteOpen, cmdOpen, files, selectedPath, loadSample, selectPath]);
+  }, [
+    loading,
+    pasteOpen,
+    cmdOpen,
+    githubOpen,
+    helpOpen,
+    files,
+    selectedPath,
+    loadSample,
+    selectPath,
+  ]);
 
   const canAnalyze = files.length > 0 && enabledTasks.size > 0 && !loading;
 

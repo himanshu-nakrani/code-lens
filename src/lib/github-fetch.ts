@@ -330,7 +330,7 @@ export async function ingestGitHubRepo(
       skipped.push(`${item.path} (${item.reason})`);
       continue;
     }
-    let content = item.content;
+    const content = item.content;
     const wasTruncated = content.includes("/* … truncated by Code Lens … */");
     if (wasTruncated) truncated.push(item.path);
 
