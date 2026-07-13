@@ -8,9 +8,17 @@ interface FileTreeProps {
   files: CodeFile[];
   selectedPath: string | null;
   onSelect: (path: string | null) => void;
+  onRemove?: (path: string) => void;
+  onAnalyze?: (path: string) => void;
 }
 
-export function FileTree({ files, selectedPath, onSelect }: FileTreeProps) {
+export function FileTree({
+  files,
+  selectedPath,
+  onSelect,
+  onRemove,
+  onAnalyze,
+}: FileTreeProps) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -54,7 +62,7 @@ export function FileTree({ files, selectedPath, onSelect }: FileTreeProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="filter…"
-            className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1 font-mono text-[11px] text-[var(--fg)] outline-none placeholder:text-[var(--muted-2)] focus:border-[var(--accent-border)]"
+            className="field !py-1 text-[11px]"
           />
         </div>
       )}
@@ -82,11 +90,13 @@ export function FileTree({ files, selectedPath, onSelect }: FileTreeProps) {
           const active = selectedPath === f.path;
           const lines = f.content.split("\n").length;
           return (
-            <li key={f.id}>
+            <li key={f.id} className="group/file relative">
               <button
                 type="button"
                 onClick={() => onSelect(f.path)}
-                className={`relative flex w-full items-start gap-2 px-2 py-1.5 text-left transition ${
+                onDoubleClick={() => onAnalyze?.(f.path)}
+                title={onAnalyze ? "Double-click to analyze" : f.path}
+                className={`relative flex w-full items-start gap-2 px-2 py-1.5 pr-14 text-left transition ${
                   active
                     ? "file-active-rail bg-[var(--surface-2)] text-[var(--fg)]"
                     : "text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--fg)]"
@@ -111,6 +121,34 @@ export function FileTree({ files, selectedPath, onSelect }: FileTreeProps) {
                   </span>
                 </span>
               </button>
+              <div className="absolute right-1 top-1.5 flex gap-0.5 opacity-0 transition group-hover/file:opacity-100 group-focus-within/file:opacity-100">
+                {onAnalyze && (
+                  <button
+                    type="button"
+                    className="icon-btn !min-w-0 !h-6 !px-1.5 text-[9px]"
+                    title="Analyze this file"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAnalyze(f.path);
+                    }}
+                  >
+                    ▶
+                  </button>
+                )}
+                {onRemove && (
+                  <button
+                    type="button"
+                    className="icon-btn !min-w-0 !h-6 !px-1.5 text-[9px] hover:!text-[var(--danger)]"
+                    title="Remove from workspace"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(f.path);
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </li>
           );
         })}

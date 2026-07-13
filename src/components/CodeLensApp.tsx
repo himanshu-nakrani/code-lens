@@ -150,10 +150,11 @@ export function CodeLensApp() {
   const analyzeRef = useRef<() => void>(() => {});
   const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
   const abortRef = useRef<AbortController | null>(null);
-  /** Last reversible edit: content replace or added file */
+  /** Last reversible edit: content replace, remove added file, or restore removed file */
   const undoOpRef = useRef<
     | { type: "content"; path: string; content: string }
     | { type: "add_file"; path: string }
+    | { type: "restore_file"; file: CodeFile }
     | null
   >(null);
 
@@ -185,11 +186,35 @@ export function CodeLensApp() {
     setUiTheme(t);
     try {
       if (!localStorage.getItem("code-lens-tip-v1")) setShowTip(true);
+      const fs = localStorage.getItem("code-lens-font-size");
+      if (fs) {
+        const n = parseFloat(fs);
+        if (n >= 10 && n <= 18) setFontSize(n);
+      }
+      if (localStorage.getItem("code-lens-focus-mode") === "1") setFocusMode(true);
     } catch {
       /* ignore */
     }
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem("code-lens-font-size", String(fontSize));
+    } catch {
+      /* ignore */
+    }
+  }, [fontSize, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem("code-lens-focus-mode", focusMode ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [focusMode, hydrated]);
 
   // Persist workspace
   useEffect(() => {
@@ -379,11 +404,20 @@ export function CodeLensApp() {
       setViewerMode("source");
       setMobilePane("code");
       pushToast("info", `Reverted ${snap.path}`);
-    } else {
+    } else if (snap.type === "add_file") {
       setFiles((prev) => prev.filter((f) => f.path !== snap.path));
       setSelectedPath((cur) => (cur === snap.path ? null : cur));
       setMobilePane("files");
       pushToast("info", `Removed ${snap.path}`);
+    } else {
+      setFiles((prev) =>
+        [...prev.filter((f) => f.path !== snap.file.path), snap.file].sort((a, b) =>
+          a.path.localeCompare(b.path)
+        )
+      );
+      selectPath(snap.file.path);
+      setMobilePane("code");
+      pushToast("info", `Restored ${snap.file.path}`);
     }
     undoOpRef.current = null;
   }, [pushToast, selectPath]);
@@ -773,6 +807,50 @@ export function CodeLensApp() {
     [selectedPath, files, pushToast, undoLastChange]
   );
 
+  const removeFile = useCallback(
+    (path: string) => {
+      const target = files.find((f) => f.path === path);
+      if (!target) return;
+      undoOpRef.current = { type: "restore_file", file: { ...target } };
+      setFiles((prev) => prev.filter((f) => f.path !== path));
+      setSelectedPath((cur) => {
+        if (cur !== path) return cur;
+        const rest = files.filter((f) => f.path !== path);
+        return rest[0]?.path ?? null;
+      });
+      setResult(null);
+      pushToast("info", `Removed ${path}`, {
+        actionLabel: "Undo",
+        onAction: () => undoLastChange(),
+        durationMs: 9000,
+      });
+    },
+    [files, pushToast, undoLastChange]
+  );
+
+  const copyPath = useCallback(async () => {
+    const p = selectedPath ?? viewerName;
+    if (!p) {
+      pushToast("info", "No path to copy");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(p);
+      pushToast("success", "Path copied");
+    } catch {
+      pushToast("error", "Could not copy path");
+    }
+  }, [selectedPath, viewerName, pushToast]);
+
+  const saveCurrentFile = useCallback(() => {
+    if (!selectedFile) {
+      pushToast("info", "No file selected");
+      return;
+    }
+    downloadText(selectedFile.name, selectedFile.content);
+    pushToast("success", `Saved ${selectedFile.name}`);
+  }, [selectedFile, pushToast]);
+
   const addTestsAsFile = useCallback(
     (code: string, framework: string) => {
       const base = selectedFile?.name?.replace(/\.[^.]+$/, "") || "generated";
@@ -928,6 +1006,13 @@ export function CodeLensApp() {
         }
       }
 
+      // Save / download current file
+      if (meta && e.key.toLowerCase() === "s" && !inInput && !modalOpen) {
+        e.preventDefault();
+        saveCurrentFile();
+        return;
+      }
+
       if (meta && e.key === "Enter" && !modalOpen) {
         e.preventDefault();
         if (!loading) analyzeRef.current();
@@ -1013,6 +1098,7 @@ export function CodeLensApp() {
     findingNavIndex,
     jumpToFinding,
     undoLastChange,
+    saveCurrentFile,
   ]);
 
   const canAnalyze = files.length > 0 && enabledTasks.size > 0 && !loading;
@@ -1130,6 +1216,19 @@ export function CodeLensApp() {
         run: () => undoLastChange(),
       },
       {
+        id: "save-file",
+        label: "Download current file",
+        hint: "⌘S",
+        group: "Workspace",
+        run: () => saveCurrentFile(),
+      },
+      {
+        id: "copy-path",
+        label: "Copy current path",
+        group: "Workspace",
+        run: () => void copyPath(),
+      },
+      {
         id: "share",
         label: "Copy share summary",
         group: "Export",
@@ -1157,6 +1256,8 @@ export function CodeLensApp() {
       focusNoteOpen,
       uiTheme,
       undoLastChange,
+      saveCurrentFile,
+      copyPath,
     ]
   );
 
@@ -1494,6 +1595,13 @@ export function CodeLensApp() {
                   selectPath(p);
                   setMobilePane("code");
                 }}
+                onRemove={removeFile}
+                onAnalyze={(p) => {
+                  selectPath(p);
+                  setMobilePane("code");
+                  // analyze after path settles
+                  setTimeout(() => analyzeRef.current(), 0);
+                }}
               />
             </div>
             {history.length > 0 && (
@@ -1592,12 +1700,17 @@ export function CodeLensApp() {
                   onSelect={selectPath}
                 />
               )}
-              <span className="min-w-0 truncate font-mono text-[11px] text-[var(--fg-dim)]">
+              <button
+                type="button"
+                onClick={() => void copyPath()}
+                className="min-w-0 truncate text-left font-mono text-[11px] text-[var(--fg-dim)] hover:text-[var(--accent)]"
+                title="Click to copy path"
+              >
                 {viewerName || "No file selected"}
                 {showingFixed && (
                   <span className="ml-2 text-[var(--ok)]">· fixed</span>
                 )}
-              </span>
+              </button>
             </div>
             <div className="flex items-center gap-1.5">
               {fixedCode && selectedFile && (

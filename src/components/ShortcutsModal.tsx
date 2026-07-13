@@ -12,6 +12,7 @@ const SHORTCUTS = [
   { keys: "[ ]", desc: "Previous / next file" },
   { keys: "n / p", desc: "Next / previous finding" },
   { keys: "⌘Z", desc: "Undo last workspace change" },
+  { keys: "⌘S", desc: "Download current file" },
 ];
 
 interface ShortcutsModalProps {

@@ -713,52 +713,67 @@ function NextSteps({
 
   if (steps.length < 2) return null;
   const doneCount = steps.filter((s) => s.done).length;
+  const allDone = doneCount === steps.length;
 
   return (
-    <div className="next-steps animate-fade-up border border-[var(--border)] bg-[var(--surface)] p-3">
+    <div
+      className={`next-steps animate-fade-up border border-[var(--border)] bg-[var(--surface)] p-3 ${
+        allDone ? "next-steps-done" : ""
+      }`}
+    >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted-2)]">
           next steps
         </p>
-        <span className="font-mono text-[10px] tabular-nums text-[var(--muted-2)]">
-          {doneCount}/{steps.length}
+        <span
+          className={`font-mono text-[10px] tabular-nums ${
+            allDone ? "text-[var(--ok)]" : "text-[var(--muted-2)]"
+          }`}
+        >
+          {allDone ? "complete" : `${doneCount}/${steps.length}`}
         </span>
       </div>
-      <ul className="space-y-1.5">
-        {steps.map((s) => (
-          <li
-            key={s.id}
-            className="flex items-center gap-2 font-mono text-[11px]"
-          >
-            <span
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] ${
-                s.done
-                  ? "border-[var(--ok)] bg-[var(--ok-dim)] text-[var(--ok)]"
-                  : "border-[var(--border)] text-[var(--muted-2)]"
-              }`}
-              aria-hidden
+      {allDone ? (
+        <p className="font-mono text-[11px] text-[var(--ok)]">
+          Nice — fix, tests, and export are handled. ⌘Z undoes workspace edits.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {steps.map((s) => (
+            <li
+              key={s.id}
+              className="flex items-center gap-2 font-mono text-[11px]"
             >
-              {s.done ? "✓" : ""}
-            </span>
-            <span
-              className={
-                s.done ? "text-[var(--muted-2)] line-through" : "text-[var(--fg-dim)]"
-              }
-            >
-              {s.label}
-            </span>
-            {!s.done && s.action && (
-              <button
-                type="button"
-                onClick={s.action}
-                className="ml-auto btn-ghost !px-1.5 !py-0.5 text-[10px] text-[var(--accent)]"
+              <span
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] ${
+                  s.done
+                    ? "border-[var(--ok)] bg-[var(--ok-dim)] text-[var(--ok)]"
+                    : "border-[var(--border)] text-[var(--muted-2)]"
+                }`}
+                aria-hidden
               >
-                {s.actionLabel}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+                {s.done ? "✓" : ""}
+              </span>
+              <span
+                className={
+                  s.done ? "text-[var(--muted-2)] line-through" : "text-[var(--fg-dim)]"
+                }
+              >
+                {s.label}
+              </span>
+              {!s.done && s.action && (
+                <button
+                  type="button"
+                  onClick={s.action}
+                  className="btn-ghost ml-auto !px-1.5 !py-0.5 text-[10px] text-[var(--accent)]"
+                >
+                  {s.actionLabel}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
