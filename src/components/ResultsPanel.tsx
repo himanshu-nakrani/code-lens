@@ -68,6 +68,12 @@ export function ResultsPanel({
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<"all" | TaskId>("all");
   const [stepIdx, setStepIdx] = useState(0);
+  const [checklist, setChecklist] = useState({
+    reviewed: false,
+    fix: false,
+    tests: false,
+    export: false,
+  });
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,10 +87,11 @@ export function ResultsPanel({
     return () => clearInterval(id);
   }, [loading]);
 
-  // New result → scroll results to top
+  // New result → scroll results to top + reset checklist
   useEffect(() => {
     if (!result) return;
     bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    setChecklist({ reviewed: false, fix: false, tests: false, export: false });
   }, [result]);
 
   useEffect(() => {
@@ -232,9 +239,30 @@ export function ResultsPanel({
           )}
           <div className="relative ml-auto">
             <ExportMenu
-              onExportMarkdown={onExportMarkdown}
-              onExportJson={onExportJson}
-              onExportSarif={onExportSarif}
+              onExportMarkdown={
+                onExportMarkdown
+                  ? () => {
+                      setChecklist((c) => ({ ...c, export: true }));
+                      onExportMarkdown();
+                    }
+                  : undefined
+              }
+              onExportJson={
+                onExportJson
+                  ? () => {
+                      setChecklist((c) => ({ ...c, export: true }));
+                      onExportJson();
+                    }
+                  : undefined
+              }
+              onExportSarif={
+                onExportSarif
+                  ? () => {
+                      setChecklist((c) => ({ ...c, export: true }));
+                      onExportSarif();
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>
@@ -263,6 +291,9 @@ export function ResultsPanel({
       <div
         ref={bodyRef}
         className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
+        onScroll={() => {
+          if (!checklist.reviewed) setChecklist((c) => ({ ...c, reviewed: true }));
+        }}
       >
         {scorecard && activeTab === "all" && (
           <div className="animate-fade-up">
@@ -277,6 +308,37 @@ export function ResultsPanel({
             />
           </div>
         )}
+        {activeTab === "all" && (
+          <NextSteps
+            result={result}
+            checklist={checklist}
+            onMarkReviewed={() => setChecklist((c) => ({ ...c, reviewed: true }))}
+            onApplyFix={
+              onApplyFix && result.bug_fixes?.fixed_code
+                ? () => {
+                    onApplyFix(result.bug_fixes!.fixed_code);
+                    setChecklist((c) => ({ ...c, fix: true }));
+                  }
+                : undefined
+            }
+            onAddTests={
+              onAddTests && result.tests?.code
+                ? () => {
+                    onAddTests(result.tests!.code, result.tests!.framework);
+                    setChecklist((c) => ({ ...c, tests: true }));
+                  }
+                : undefined
+            }
+            onExport={
+              onExportMarkdown
+                ? () => {
+                    onExportMarkdown();
+                    setChecklist((c) => ({ ...c, export: true }));
+                  }
+                : undefined
+            }
+          />
+        )}
         {visibleTasks.map((taskId, i) => (
           <div key={taskId} className={`animate-fade-up stagger-${Math.min(i + 1, 4)}`}>
             <TaskResultCard
@@ -284,9 +346,26 @@ export function ResultsPanel({
               result={result}
               language={language}
               originalCode={originalCode}
-              onApplyFix={onApplyFix}
-              onAddTests={onAddTests}
-              onJumpToLine={onJumpToLine}
+              onApplyFix={
+                onApplyFix
+                  ? (code) => {
+                      onApplyFix(code);
+                      setChecklist((c) => ({ ...c, fix: true }));
+                    }
+                  : undefined
+              }
+              onAddTests={
+                onAddTests
+                  ? (code, fw) => {
+                      onAddTests(code, fw);
+                      setChecklist((c) => ({ ...c, tests: true }));
+                    }
+                  : undefined
+              }
+              onJumpToLine={(line) => {
+                setChecklist((c) => ({ ...c, reviewed: true }));
+                onJumpToLine?.(line);
+              }}
               uiTheme={uiTheme}
             />
           </div>
@@ -569,6 +648,118 @@ function MissingCard({ label }: { label: string }) {
         This task was requested but missing from the model response.
       </p>
     </PanelShell>
+  );
+}
+
+function NextSteps({
+  result,
+  checklist,
+  onMarkReviewed,
+  onApplyFix,
+  onAddTests,
+  onExport,
+}: {
+  result: AnalysisResult;
+  checklist: { reviewed: boolean; fix: boolean; tests: boolean; export: boolean };
+  onMarkReviewed: () => void;
+  onApplyFix?: () => void;
+  onAddTests?: () => void;
+  onExport?: () => void;
+}) {
+  const hasFix = Boolean(result.bug_fixes?.fixed_code);
+  const hasTests = Boolean(result.tests?.code);
+  const steps = [
+    {
+      id: "reviewed",
+      label: "Review findings",
+      done: checklist.reviewed,
+      action: onMarkReviewed,
+      actionLabel: "Mark done",
+    },
+    hasFix
+      ? {
+          id: "fix",
+          label: "Apply fix to source",
+          done: checklist.fix,
+          action: onApplyFix,
+          actionLabel: "Apply",
+        }
+      : null,
+    hasTests
+      ? {
+          id: "tests",
+          label: "Add tests as file",
+          done: checklist.tests,
+          action: onAddTests,
+          actionLabel: "Add",
+        }
+      : null,
+    onExport
+      ? {
+          id: "export",
+          label: "Export report",
+          done: checklist.export,
+          action: onExport,
+          actionLabel: "Export md",
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    id: string;
+    label: string;
+    done: boolean;
+    action?: () => void;
+    actionLabel: string;
+  }>;
+
+  if (steps.length < 2) return null;
+  const doneCount = steps.filter((s) => s.done).length;
+
+  return (
+    <div className="next-steps animate-fade-up border border-[var(--border)] bg-[var(--surface)] p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted-2)]">
+          next steps
+        </p>
+        <span className="font-mono text-[10px] tabular-nums text-[var(--muted-2)]">
+          {doneCount}/{steps.length}
+        </span>
+      </div>
+      <ul className="space-y-1.5">
+        {steps.map((s) => (
+          <li
+            key={s.id}
+            className="flex items-center gap-2 font-mono text-[11px]"
+          >
+            <span
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] ${
+                s.done
+                  ? "border-[var(--ok)] bg-[var(--ok-dim)] text-[var(--ok)]"
+                  : "border-[var(--border)] text-[var(--muted-2)]"
+              }`}
+              aria-hidden
+            >
+              {s.done ? "✓" : ""}
+            </span>
+            <span
+              className={
+                s.done ? "text-[var(--muted-2)] line-through" : "text-[var(--fg-dim)]"
+              }
+            >
+              {s.label}
+            </span>
+            {!s.done && s.action && (
+              <button
+                type="button"
+                onClick={s.action}
+                className="ml-auto btn-ghost !px-1.5 !py-0.5 text-[10px] text-[var(--accent)]"
+              >
+                {s.actionLabel}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

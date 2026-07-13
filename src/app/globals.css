@@ -1246,6 +1246,16 @@ textarea.field {
   box-shadow: 0 1px 0 var(--border);
 }
 
+/* Post-analysis checklist */
+.next-steps {
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="light"] .next-steps {
+  background: var(--surface);
+}
+
 /* Prose blocks in results */
 .prose-result {
   white-space: pre-wrap;

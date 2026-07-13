@@ -11,7 +11,7 @@ const SHORTCUTS = [
   { keys: "1–4", desc: "Empty: run samples · Loaded: switch panes" },
   { keys: "[ ]", desc: "Previous / next file" },
   { keys: "n / p", desc: "Next / previous finding" },
-  { keys: "⌘Z", desc: "Undo last applied fix" },
+  { keys: "⌘Z", desc: "Undo last workspace change" },
 ];
 
 interface ShortcutsModalProps {

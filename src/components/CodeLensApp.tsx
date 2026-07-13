@@ -150,7 +150,12 @@ export function CodeLensApp() {
   const analyzeRef = useRef<() => void>(() => {});
   const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
   const abortRef = useRef<AbortController | null>(null);
-  const undoFixRef = useRef<{ path: string; content: string } | null>(null);
+  /** Last reversible edit: content replace or added file */
+  const undoOpRef = useRef<
+    | { type: "content"; path: string; content: string }
+    | { type: "add_file"; path: string }
+    | null
+  >(null);
 
   // Client-only restore after mount (avoids SSR/localStorage hydration mismatch)
   useEffect(() => {
@@ -352,28 +357,35 @@ export function CodeLensApp() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const undoLastFix = useCallback(() => {
-    const snap = undoFixRef.current;
+  const undoLastChange = useCallback(() => {
+    const snap = undoOpRef.current;
     if (!snap) {
       pushToast("info", "Nothing to undo");
       return;
     }
-    setFiles((prev) =>
-      prev.map((f) =>
-        f.path === snap.path
-          ? {
-              ...f,
-              content: snap.content,
-              size: new TextEncoder().encode(snap.content).length,
-            }
-          : f
-      )
-    );
-    undoFixRef.current = null;
-    selectPath(snap.path);
-    setViewerMode("source");
-    setMobilePane("code");
-    pushToast("info", `Reverted ${snap.path}`);
+    if (snap.type === "content") {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.path === snap.path
+            ? {
+                ...f,
+                content: snap.content,
+                size: new TextEncoder().encode(snap.content).length,
+              }
+            : f
+        )
+      );
+      selectPath(snap.path);
+      setViewerMode("source");
+      setMobilePane("code");
+      pushToast("info", `Reverted ${snap.path}`);
+    } else {
+      setFiles((prev) => prev.filter((f) => f.path !== snap.path));
+      setSelectedPath((cur) => (cur === snap.path ? null : cur));
+      setMobilePane("files");
+      pushToast("info", `Removed ${snap.path}`);
+    }
+    undoOpRef.current = null;
   }, [pushToast, selectPath]);
 
   const restoreHistory = useCallback(
@@ -733,7 +745,11 @@ export function CodeLensApp() {
       }
       const current = files.find((f) => f.path === selectedPath);
       if (current) {
-        undoFixRef.current = { path: selectedPath, content: current.content };
+        undoOpRef.current = {
+          type: "content",
+          path: selectedPath,
+          content: current.content,
+        };
       }
       setFiles((prev) =>
         prev.map((f) =>
@@ -750,11 +766,11 @@ export function CodeLensApp() {
       setMobilePane("code");
       pushToast("success", `Applied fix · ${selectedPath}`, {
         actionLabel: "Undo",
-        onAction: () => undoLastFix(),
+        onAction: () => undoLastChange(),
         durationMs: 9000,
       });
     },
-    [selectedPath, files, pushToast, undoLastFix]
+    [selectedPath, files, pushToast, undoLastChange]
   );
 
   const addTestsAsFile = useCallback(
@@ -774,8 +790,19 @@ export function CodeLensApp() {
         language = "javascript";
       }
       const path = `tests/${name}`;
+      const existing = files.find((f) => f.path === path);
+      // If overwriting existing tests file, allow content undo; else remove-file undo
+      if (existing) {
+        undoOpRef.current = {
+          type: "content",
+          path,
+          content: existing.content,
+        };
+      } else {
+        undoOpRef.current = { type: "add_file", path };
+      }
       const file: CodeFile = {
-        id: `tests-${Date.now()}`,
+        id: existing?.id ?? `tests-${Date.now()}`,
         name,
         path,
         content: code,
@@ -788,9 +815,13 @@ export function CodeLensApp() {
       });
       selectPath(path);
       setMobilePane("code");
-      pushToast("success", `Added ${path} (${framework})`);
+      pushToast("success", `Added ${path} (${framework})`, {
+        actionLabel: "Undo",
+        onAction: () => undoLastChange(),
+        durationMs: 9000,
+      });
     },
-    [selectedFile, pushToast, selectPath]
+    [selectedFile, files, pushToast, selectPath, undoLastChange]
   );
 
   const exportMarkdown = useCallback(() => {
@@ -890,9 +921,9 @@ export function CodeLensApp() {
 
       // Undo last applied fix (does not intercept when typing)
       if (meta && !e.shiftKey && e.key.toLowerCase() === "z" && !inInput && !modalOpen) {
-        if (undoFixRef.current) {
+        if (undoOpRef.current) {
           e.preventDefault();
-          undoLastFix();
+          undoLastChange();
           return;
         }
       }
@@ -981,7 +1012,7 @@ export function CodeLensApp() {
     lineFindings,
     findingNavIndex,
     jumpToFinding,
-    undoLastFix,
+    undoLastChange,
   ]);
 
   const canAnalyze = files.length > 0 && enabledTasks.size > 0 && !loading;
@@ -1092,11 +1123,11 @@ export function CodeLensApp() {
         run: () => setUiTheme((t) => toggleTheme(t)),
       },
       {
-        id: "undo-fix",
-        label: "Undo last applied fix",
+        id: "undo-change",
+        label: "Undo last workspace change",
         hint: "⌘Z",
         group: "Workspace",
-        run: () => undoLastFix(),
+        run: () => undoLastChange(),
       },
       {
         id: "share",
@@ -1125,7 +1156,7 @@ export function CodeLensApp() {
       depth,
       focusNoteOpen,
       uiTheme,
-      undoLastFix,
+      undoLastChange,
     ]
   );
 
