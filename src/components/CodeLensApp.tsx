@@ -1050,61 +1050,77 @@ export function CodeLensApp() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1">
             <button
               type="button"
               onClick={() => setCmdOpen(true)}
-              className="btn-secondary"
-              title="⌘K"
+              className="icon-btn"
+              title="Command palette (⌘K)"
+              aria-label="Open command palette"
             >
-              cmd
+              ⌘K
             </button>
             <button
               type="button"
               onClick={() => setUiTheme((t) => toggleTheme(t))}
-              className="btn-secondary"
-              title={uiTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              className="icon-btn"
+              title={uiTheme === "dark" ? "Light theme" : "Dark theme"}
+              aria-label={uiTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
             >
-              {uiTheme === "dark" ? "light" : "dark"}
+              {uiTheme === "dark" ? "☀" : "☾"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFocusMode((f) => !f)}
+              className={`icon-btn ${focusMode ? "icon-btn-on" : ""}`}
+              title={focusMode ? "Show files pane" : "Focus mode — hide files"}
+              aria-pressed={focusMode}
+              aria-label="Toggle focus mode"
+            >
+              {focusMode ? "⊟" : "⊞"}
             </button>
             <div className="relative" ref={samplesMenuRef}>
               <button
                 type="button"
                 onClick={() => setSamplesMenuOpen((v) => !v)}
-                className="btn-secondary"
-                title="Load demo samples"
+                className="icon-btn"
+                title="Demo samples"
+                aria-expanded={samplesMenuOpen}
+                aria-haspopup="menu"
               >
                 samples ▾
               </button>
               {samplesMenuOpen && (
-                <div className="absolute right-0 top-full z-40 mt-1 min-w-[11rem] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+                <div className="menu-panel absolute right-0 top-full z-40 mt-1 min-w-[12rem] py-1" role="menu">
+                  <p className="menu-label">Demos</p>
                   {SAMPLE_SNIPPETS.map((s) => (
                     <button
                       key={s.id}
                       type="button"
+                      role="menuitem"
                       onClick={() => {
                         loadSample(s, false);
                         setSamplesMenuOpen(false);
                       }}
-                      className="flex w-full flex-col px-3 py-1.5 text-left hover:bg-[var(--surface-2)]"
+                      className="menu-item flex-col !items-start !gap-0"
                     >
-                      <span className="font-mono text-[11px] text-[var(--fg)]">
-                        {s.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-[var(--muted-2)]">
+                      <span className="text-[var(--fg)]">{s.name}</span>
+                      <span className="text-[10px] text-[var(--muted-2)]">
                         {SAMPLE_META[s.id]?.tag ?? s.language}
                       </span>
                     </button>
                   ))}
+                  <div className="menu-sep" />
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={() => {
                       loadAllSamples();
                       setSamplesMenuOpen(false);
                     }}
-                    className="w-full border-t border-[var(--border)] px-3 py-1.5 text-left font-mono text-[11px] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                    className="menu-item"
                   >
-                    Load all
+                    Load all samples
                   </button>
                 </div>
               )}
@@ -1112,8 +1128,9 @@ export function CodeLensApp() {
             <button
               type="button"
               onClick={() => setHelpOpen(true)}
-              className="btn-ghost"
-              title="Shortcuts"
+              className="icon-btn"
+              title="Keyboard shortcuts"
+              aria-label="Keyboard shortcuts"
             >
               ?
             </button>
@@ -1159,8 +1176,17 @@ export function CodeLensApp() {
               type="button"
               onClick={analyze}
               disabled={!canAnalyze}
-              className={`btn-primary btn-primary-magnetic ${loading ? "btn-primary-live" : ""}`}
-              title="⌘/Ctrl + Enter"
+              className={`btn-primary btn-primary-magnetic ${loading ? "btn-primary-live" : ""} ${
+                canAnalyze && !loading ? "btn-primary-ready" : ""
+              }`}
+              title={
+                !files.length
+                  ? "Load a file first"
+                  : enabledTasks.size === 0
+                    ? "Enable at least one lens"
+                    : "⌘/Ctrl + Enter"
+              }
+              aria-busy={loading}
             >
               {loading ? (
                 <>
@@ -1226,7 +1252,7 @@ export function CodeLensApp() {
           </div>
         )}
 
-        <div className="flex border-t border-[var(--border)] lg:hidden">
+        <div className="mobile-tabs flex border-t border-[var(--border)] lg:hidden">
           {(
             [
               ["files", "Files"],
@@ -1238,18 +1264,16 @@ export function CodeLensApp() {
               key={id}
               type="button"
               onClick={() => setMobilePane(id)}
-              className={`flex-1 py-2 text-center text-xs font-medium transition ${
-                mobilePane === id
-                  ? "border-b-2 border-[var(--accent)] text-[var(--accent)]"
-                  : "text-[var(--muted)]"
+              className={`mobile-tab flex-1 py-2.5 text-center text-xs font-medium ${
+                mobilePane === id ? "mobile-tab-active" : "text-[var(--muted)]"
               }`}
             >
               {label}
               {id === "results" && result && !loading && (
-                <span className="ml-1 inline-block h-1.5 w-1.5 bg-[var(--ok)]" />
+                <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ok)] align-middle" />
               )}
               {id === "results" && loading && (
-                <span className="ml-1 inline-block h-1.5 w-1.5 animate-pulse bg-[var(--accent)]" />
+                <span className="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)] align-middle" />
               )}
             </button>
           ))}
@@ -1337,28 +1361,32 @@ export function CodeLensApp() {
                     + Add ▾
                   </button>
                   {addMenuOpen && (
-                    <div className="absolute bottom-full left-0 right-0 z-40 mb-1 border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+                    <div className="menu-panel absolute bottom-full left-0 right-0 z-40 mb-1 py-1">
+                      <p className="menu-label">Add to workspace</p>
                       <button
                         type="button"
-                        className="block w-full px-3 py-1.5 text-left font-mono text-[11px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                        className="menu-item"
                         onClick={() => {
                           setPasteOpen(true);
                           setAddMenuOpen(false);
                         }}
                       >
                         Paste code
+                        <span className="ml-auto text-[10px] text-[var(--muted-2)]">⌘⇧P</span>
                       </button>
                       <button
                         type="button"
-                        className="block w-full px-3 py-1.5 text-left font-mono text-[11px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                        className="menu-item"
                         onClick={() => {
                           setGithubOpen(true);
                           setAddMenuOpen(false);
                         }}
                       >
                         GitHub repo
+                        <span className="ml-auto text-[10px] text-[var(--muted-2)]">⌘⇧G</span>
                       </button>
-                      <div className="border-t border-[var(--border)] px-2 py-2">
+                      <div className="menu-sep" />
+                      <div className="px-2 py-2">
                         <DropZone onFiles={(f) => { setAddMenuOpen(false); void handleFiles(f); }} disabled={loading} compact />
                       </div>
                     </div>
@@ -1390,26 +1418,18 @@ export function CodeLensApp() {
             </div>
             <div className="flex items-center gap-1.5">
               {fixedCode && selectedFile && (
-                <div className="flex overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
+                <div className="seg">
                   <button
                     type="button"
                     onClick={() => setViewerMode("source")}
-                    className={`px-1.5 py-0.5 font-mono text-[10px] uppercase ${
-                      viewerMode === "source"
-                        ? "bg-[var(--accent-dim)] text-[var(--accent)]"
-                        : "text-[var(--muted)]"
-                    }`}
+                    className={`seg-btn ${viewerMode === "source" ? "seg-btn-on" : ""}`}
                   >
                     src
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewerMode("fixed")}
-                    className={`border-l border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] uppercase ${
-                      viewerMode === "fixed"
-                        ? "bg-[var(--ok-dim)] text-[var(--ok)]"
-                        : "text-[var(--muted)]"
-                    }`}
+                    className={`seg-btn ${viewerMode === "fixed" ? "seg-btn-on-ok" : ""}`}
                   >
                     fix
                   </button>
@@ -1446,9 +1466,20 @@ export function CodeLensApp() {
                   <h2 className="font-mono text-[15px] font-semibold tracking-wide text-[var(--fg)]">
                     <Typewriter text="Point the lens at your code" speed={32} />
                   </h2>
-                  <p className="mx-auto mt-2 max-w-md text-[12px] leading-relaxed text-[var(--muted)]">
-                    Six lenses · severity findings · line annotations · deep mode.
-                    Live grok-4.5 — nothing canned.
+                  <p className="hero-sub mx-auto mt-2 text-[12px]">
+                    Drop a folder, paste a snippet, or run a sample — live analysis with
+                    grok-4.5.
+                  </p>
+                  <p className="mt-2 font-mono text-[10px] text-[var(--muted-2)]">
+                    Press{" "}
+                    <button
+                      type="button"
+                      className="linkish !text-[10px]"
+                      onClick={() => loadSample(SAMPLE_SNIPPETS[0], true)}
+                    >
+                      1
+                    </button>{" "}
+                    for a 10-second demo
                   </p>
                 </div>
 
@@ -1638,6 +1669,8 @@ export function CodeLensApp() {
         workspaceSource={workspaceSource}
         findingCount={result ? collectAllFindings(result).length : 0}
         depth={depth}
+        onOpenResults={() => setMobilePane("results")}
+        onOpenCode={() => setMobilePane("code")}
       />
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />

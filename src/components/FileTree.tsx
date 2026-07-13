@@ -26,12 +26,13 @@ export function FileTree({ files, selectedPath, onSelect }: FileTreeProps) {
 
   if (files.length === 0) {
     return (
-      <div className="flex h-full flex-col justify-center px-3 py-8">
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-3 py-8 text-center">
+        <span className="empty-mark" aria-hidden>
+          ∅
+        </span>
         <p className="pane-title">files</p>
-        <p className="mt-2 font-mono text-[11px] text-[var(--muted)]">none loaded</p>
-        <p className="mt-1 text-[11px] text-[var(--muted-2)]">
-          drop · paste · sample
-        </p>
+        <p className="font-mono text-[11px] text-[var(--muted)]">Nothing loaded yet</p>
+        <p className="text-[11px] text-[var(--muted-2)]">Drop · paste · samples</p>
       </div>
     );
   }
@@ -103,8 +104,10 @@ export function FileTree({ files, selectedPath, onSelect }: FileTreeProps) {
                       {f.path}
                     </span>
                   )}
-                  <span className="mt-0.5 block font-mono text-[9px] text-[var(--muted-2)]">
-                    {lines}L · {formatBytes(f.size)}
+                  <span className="mt-0.5 block font-mono text-[9px] tabular-nums text-[var(--muted-2)]">
+                    {lines}L
+                    <span className="mx-1 opacity-40">·</span>
+                    {formatBytes(f.size)}
                   </span>
                 </span>
               </button>

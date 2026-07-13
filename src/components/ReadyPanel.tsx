@@ -21,6 +21,9 @@ export function ReadyPanel({
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-5 py-8 text-center">
+      <span className="empty-mark" aria-hidden>
+        {hasFiles ? "◎" : "○"}
+      </span>
       <div>
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted-2)]">
           analysis

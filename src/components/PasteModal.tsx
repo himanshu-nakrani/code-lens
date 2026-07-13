@@ -30,6 +30,8 @@ export function PasteModal({ open, onClose, onSubmit }: PasteModalProps) {
   if (!open) return null;
 
   const language = detectLanguage(filename);
+  const lines = content ? content.split("\n").length : 0;
+  const canSubmit = Boolean(content.trim());
 
   function submit() {
     if (!content.trim()) return;
@@ -46,48 +48,68 @@ export function PasteModal({ open, onClose, onSubmit }: PasteModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/75"
+        className="modal-scrim"
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="modal-panel relative z-10 flex w-full max-w-xl flex-col overflow-hidden">
+      <div
+        className="modal-panel relative z-10 flex w-full max-w-xl flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="paste-modal-title"
+      >
         <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--fg)]">Paste code</h2>
+            <h2 id="paste-modal-title" className="text-sm font-semibold text-[var(--fg)]">
+              Paste code
+            </h2>
             <p className="text-[11px] text-[var(--muted)]">
-              Drop text without uploading a file · language from extension
+              No file upload needed · language from extension
             </p>
           </div>
-          <button type="button" onClick={onClose} className="btn-ghost text-sm">
+          <button type="button" onClick={onClose} className="icon-btn" aria-label="Close">
             ✕
           </button>
         </header>
         <div className="flex flex-col gap-3 p-4">
-          <div className="flex items-center gap-2">
-            <label className="shrink-0 text-[11px] text-[var(--muted)]">Filename</label>
-            <input
-              value={filename}
-              onChange={(e) => setFilename(e.target.value)}
-              className="flex-1 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 font-mono text-xs text-[var(--fg)] outline-none focus:border-[var(--accent-border)]"
-              placeholder="snippet.js"
-            />
-            <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted)]">
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <label className="field-label" htmlFor="paste-filename">
+                Filename
+              </label>
+              <input
+                id="paste-filename"
+                value={filename}
+                onChange={(e) => setFilename(e.target.value)}
+                className="field"
+                placeholder="snippet.js"
+              />
+            </div>
+            <span className="mb-0.5 shrink-0 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-2)] px-2 py-2 font-mono text-[10px] uppercase text-[var(--muted)]">
               {language}
             </span>
           </div>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={12}
-            spellCheck={false}
-            placeholder="// paste source here…"
-            className="w-full resize-y border border-[var(--border)] bg-[var(--bg)] p-2 font-mono text-xs leading-relaxed text-[var(--fg-dim)] outline-none focus:border-[var(--accent-border)]"
-            autoFocus
-          />
+          <div>
+            <label className="field-label" htmlFor="paste-body">
+              Source
+            </label>
+            <textarea
+              id="paste-body"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={12}
+              spellCheck={false}
+              placeholder="// paste source here…"
+              className="field min-h-[12rem]"
+              autoFocus
+            />
+          </div>
         </div>
         <footer className="flex items-center justify-between border-t border-[var(--border)] px-4 py-3">
           <span className="font-mono text-[10px] text-[var(--muted-2)]">
-            {content.length} chars · ⌘↵ to add
+            {content.length} chars
+            {lines > 0 ? ` · ${lines}L` : ""}
+            <span className="ml-2 hidden sm:inline">· ⌘↵ to add</span>
           </span>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="btn-secondary text-xs">
@@ -95,7 +117,7 @@ export function PasteModal({ open, onClose, onSubmit }: PasteModalProps) {
             </button>
             <button
               type="button"
-              disabled={!content.trim()}
+              disabled={!canSubmit}
               onClick={submit}
               className="btn-primary text-xs"
             >

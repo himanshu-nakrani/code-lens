@@ -129,14 +129,21 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/75"
+        className="modal-scrim"
         aria-label="Close"
         onClick={() => !loading && onClose()}
       />
-      <div className="modal-panel relative z-10 flex w-full max-w-lg flex-col overflow-hidden">
+      <div
+        className="modal-panel relative z-10 flex w-full max-w-lg flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="github-modal-title"
+      >
         <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--fg)]">Load GitHub repo</h2>
+            <h2 id="github-modal-title" className="text-sm font-semibold text-[var(--fg)]">
+              Load GitHub repo
+            </h2>
             <p className="text-[11px] text-[var(--muted)]">
               Public repos work as-is · private needs{" "}
               <span className="font-mono text-[var(--accent)]">GITHUB_TOKEN</span>
@@ -145,8 +152,9 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
           <button
             type="button"
             onClick={() => !loading && onClose()}
-            className="btn-ghost text-sm"
+            className="icon-btn"
             disabled={loading}
+            aria-label="Close"
           >
             ✕
           </button>
@@ -154,45 +162,48 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
 
         <div className="flex flex-col gap-3 p-4">
           <div>
-            <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
+            <label className="field-label" htmlFor="gh-repo">
               repository
             </label>
             <input
+              id="gh-repo"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
               autoFocus
               spellCheck={false}
               placeholder="owner/repo or https://github.com/owner/repo"
-              className="w-full border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 font-mono text-xs text-[var(--fg)] outline-none focus:border-[var(--accent-border)]"
+              className="field"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
+              <label className="field-label" htmlFor="gh-ref">
                 branch / ref
               </label>
               <input
+                id="gh-ref"
                 value={ref}
                 onChange={(e) => setRef(e.target.value)}
                 disabled={loading}
                 spellCheck={false}
                 placeholder="default branch"
-                className="w-full border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 font-mono text-xs text-[var(--fg)] outline-none focus:border-[var(--accent-border)]"
+                className="field"
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
+              <label className="field-label" htmlFor="gh-subdir">
                 subfolder
               </label>
               <input
+                id="gh-subdir"
                 value={subdir}
                 onChange={(e) => setSubdir(e.target.value)}
                 disabled={loading}
                 spellCheck={false}
                 placeholder="e.g. src"
-                className="w-full border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 font-mono text-xs text-[var(--fg)] outline-none focus:border-[var(--accent-border)]"
+                className="field"
               />
             </div>
           </div>
@@ -229,9 +240,7 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
 
           {recents.length > 0 && (
             <div>
-              <p className="mb-1.5 font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
-                recent
-              </p>
+              <p className="field-label">recent</p>
               <ul className="max-h-28 space-y-1 overflow-y-auto">
                 {recents.map((r) => (
                   <li key={`${r.owner}/${r.name}/${r.ref}/${r.subdir}/${r.at}`}>
@@ -239,7 +248,7 @@ export function GitHubModal({ open, onClose, onLoaded, disabled }: GitHubModalPr
                       type="button"
                       disabled={loading}
                       onClick={() => applyRecent(r)}
-                      className="flex w-full items-center gap-2 border border-[var(--border)] bg-[var(--code-bg)] px-2 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] transition hover:border-[var(--accent-border)] hover:text-[var(--accent)]"
+                      className="flex w-full items-center gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--code-bg)] px-2 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] transition hover:border-[var(--accent-border)] hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]"
                     >
                       <span className="min-w-0 flex-1 truncate">
                         {r.owner}/{r.name}

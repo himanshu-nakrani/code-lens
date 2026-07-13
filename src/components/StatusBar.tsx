@@ -19,6 +19,8 @@ interface StatusBarProps {
   workspaceSource?: string | null;
   findingCount?: number;
   depth?: string;
+  onOpenResults?: () => void;
+  onOpenCode?: () => void;
 }
 
 export function StatusBar({
@@ -34,6 +36,8 @@ export function StatusBar({
   hasApiKey,
   findingCount = 0,
   depth,
+  onOpenResults,
+  onOpenCode,
 }: StatusBarProps) {
   return (
     <footer className="status-bar glass-footer relative z-20 shrink-0 border-t border-[var(--border)] px-3 py-1.5">
@@ -44,14 +48,11 @@ export function StatusBar({
             <span
               className={`status-dot ${loading ? "status-dot-pulse" : hasResult ? "status-dot-ok" : ""}`}
             />
-            {loading ? "focusing" : hasResult ? "ready" : "idle"}
+            {loading ? "analyzing" : hasResult ? "ready" : "idle"}
           </span>
         </span>
         {hasApiKey === false && (
           <span className="text-[var(--danger)]">key missing</span>
-        )}
-        {hasApiKey === true && (
-          <span className="hidden text-[var(--muted-2)] sm:inline">key ok</span>
         )}
         <span>
           {fileCount} file{fileCount === 1 ? "" : "s"}
@@ -60,12 +61,24 @@ export function StatusBar({
           )}
         </span>
         {lineCount > 0 && language && language !== "text" && (
-          <span className="text-[var(--muted-2)]">
+          <button
+            type="button"
+            className="status-click text-[var(--muted-2)]"
+            onClick={onOpenCode}
+            title="Focus code pane"
+          >
             {language} · {lineCount}L
-          </span>
+          </button>
         )}
         {findingCount > 0 && !loading && (
-          <span className="text-[var(--danger)]">{findingCount} findings</span>
+          <button
+            type="button"
+            className="status-click text-[var(--danger)]"
+            onClick={onOpenResults}
+            title="Open analysis findings"
+          >
+            {findingCount} finding{findingCount === 1 ? "" : "s"}
+          </button>
         )}
         {depth === "deep" && <span className="text-[var(--warn)]">deep</span>}
         {loading && (
@@ -79,7 +92,10 @@ export function StatusBar({
           </span>
         )}
         {lastTarget && (
-          <span className="ml-auto max-w-[30%] truncate text-[var(--muted-2)]" title={lastTarget}>
+          <span
+            className="ml-auto max-w-[30%] truncate text-[var(--muted-2)]"
+            title={lastTarget}
+          >
             {lastTarget}
           </span>
         )}

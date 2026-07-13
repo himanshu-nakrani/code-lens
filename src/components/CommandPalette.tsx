@@ -50,7 +50,7 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
         onClose();
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        setActive((i) => Math.min(filtered.length - 1, i + 1));
+        setActive((i) => Math.min(Math.max(filtered.length - 1, 0), i + 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setActive((i) => Math.max(0, i - 1));
@@ -72,29 +72,37 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
   const groups = Array.from(new Set(filtered.map((c) => c.group || "Actions")));
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center p-4 pt-[10vh]">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center p-4 pt-[12vh]">
       <button
         type="button"
-        className="absolute inset-0 bg-black/75"
-        aria-label="Close"
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        aria-label="Close command palette"
         onClick={onClose}
       />
-      <div className="modal-panel relative z-10 w-full max-w-lg overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
-          <span className="font-mono text-[10px] text-[var(--accent)]">&gt;</span>
+      <div
+        className="modal-panel relative z-10 w-full max-w-lg overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+      >
+        <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2.5">
+          <span className="font-mono text-[11px] text-[var(--accent)]" aria-hidden>
+            ⌘
+          </span>
           <input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="command…"
-            className="flex-1 bg-transparent font-mono text-[12px] text-[var(--fg)] outline-none placeholder:text-[var(--muted-2)]"
+            placeholder="Search commands…"
+            className="flex-1 bg-transparent font-mono text-[13px] text-[var(--fg)] outline-none placeholder:text-[var(--muted-2)]"
+            aria-label="Search commands"
           />
-          <kbd>esc</kbd>
+          <kbd className="hidden sm:inline">esc</kbd>
         </div>
-        <ul className="max-h-[50vh] overflow-y-auto py-0">
+        <ul className="max-h-[min(50vh,22rem)] overflow-y-auto py-1">
           {filtered.length === 0 && (
-            <li className="px-3 py-4 text-center font-mono text-[11px] text-[var(--muted)]">
-              no matches
+            <li className="px-3 py-6 text-center font-mono text-[11px] text-[var(--muted)]">
+              No matches for “{q.trim()}”
             </li>
           )}
           {groups.map((g) => {
@@ -102,9 +110,7 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
             if (!items.length) return null;
             return (
               <li key={g}>
-                <p className="border-b border-[var(--border)] bg-[var(--bg)] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--muted-2)]">
-                  {g}
-                </p>
+                <p className="menu-label px-3 pt-2">{g}</p>
                 {items.map((c) => {
                   const idx = filtered.indexOf(c);
                   return (
@@ -116,15 +122,13 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
                         onClose();
                         c.run();
                       }}
-                      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left font-mono text-[12px] transition ${
-                        idx === active
-                          ? "bg-[var(--accent-dim)] text-[var(--accent)]"
-                          : "text-[var(--fg-dim)] hover:bg-[var(--surface-2)]"
+                      className={`menu-item ${
+                        idx === active ? "menu-item-active" : ""
                       }`}
                     >
-                      <span>{c.label}</span>
+                      <span className="min-w-0 flex-1 truncate">{c.label}</span>
                       {c.hint && (
-                        <span className="shrink-0 text-[10px] text-[var(--muted-2)]">
+                        <span className="shrink-0 font-mono text-[10px] text-[var(--muted-2)]">
                           {c.hint}
                         </span>
                       )}
@@ -135,6 +139,10 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
             );
           })}
         </ul>
+        <div className="flex items-center justify-between border-t border-[var(--border)] px-3 py-1.5 font-mono text-[9px] text-[var(--muted-2)]">
+          <span>↑↓ navigate · ↵ run</span>
+          <span>{filtered.length} cmds</span>
+        </div>
       </div>
     </div>
   );

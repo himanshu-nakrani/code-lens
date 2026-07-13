@@ -185,11 +185,11 @@ export function CodeBlock({
               ···
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full z-30 mt-1 min-w-[8rem] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+              <div className="menu-panel absolute right-0 top-full z-30 mt-1 min-w-[8.5rem] py-1">
                 {onToggleFind && (
                   <button
                     type="button"
-                    className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                    className="menu-item"
                     onClick={() => {
                       onToggleFind();
                       setMenuOpen(false);
@@ -200,7 +200,7 @@ export function CodeBlock({
                 )}
                 <button
                   type="button"
-                  className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                  className="menu-item"
                   onClick={() => {
                     setWrap((w) => !w);
                     setMenuOpen(false);
@@ -212,23 +212,24 @@ export function CodeBlock({
                   <>
                     <button
                       type="button"
-                      className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                      className="menu-item"
                       onClick={() => onFontSizeChange(Math.max(10, fontSize - 1))}
                     >
                       Smaller type
                     </button>
                     <button
                       type="button"
-                      className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                      className="menu-item"
                       onClick={() => onFontSizeChange(Math.min(18, fontSize + 1))}
                     >
                       Larger type
                     </button>
                   </>
                 )}
+                <div className="menu-sep" />
                 <button
                   type="button"
-                  className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+                  className="menu-item"
                   onClick={() => {
                     onDownload();
                     setMenuOpen(false);

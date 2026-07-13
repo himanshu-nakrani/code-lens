@@ -148,17 +148,16 @@ export function TaskToggles({
           {activePreset} ▾
         </button>
         {presetsOpen && (
-          <div className="absolute left-0 top-full z-40 mt-1 min-w-[9rem] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+          <div className="menu-panel absolute left-0 top-full z-40 mt-1 min-w-[9.5rem] py-1">
+            <p className="menu-label">Presets</p>
             {PRESETS.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 disabled={disabled}
                 onClick={() => applyPreset(p.tasks)}
-                className={`flex w-full px-3 py-1.5 text-left font-mono text-[11px] hover:bg-[var(--surface-2)] ${
-                  isPresetActive(p.tasks)
-                    ? "text-[var(--accent)]"
-                    : "text-[var(--fg-dim)]"
+                className={`menu-item ${
+                  isPresetActive(p.tasks) ? "menu-item-active" : ""
                 }`}
               >
                 {isPresetActive(p.tasks) ? "▸ " : ""}

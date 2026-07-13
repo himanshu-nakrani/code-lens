@@ -155,15 +155,18 @@ export function ResultsPanel({
   if (error) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <span className="empty-mark !border-[var(--danger)]/40 !bg-[var(--danger-dim)] !text-[var(--danger)]" aria-hidden>
+          !
+        </span>
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--danger)]">
           error
         </p>
-        <p className="text-[12px] font-medium text-[var(--danger)]">Analysis failed</p>
+        <p className="text-[12px] font-medium text-[var(--fg)]">Analysis failed</p>
         <p className="max-w-sm text-xs leading-relaxed text-[var(--muted)] whitespace-pre-wrap">
           {error}
         </p>
         {error.includes("XAI_API_KEY") && (
-          <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-left font-mono text-[11px] text-[var(--fg-dim)]">
+          <div className="mt-1 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-left font-mono text-[11px] text-[var(--fg-dim)]">
             <div>Generate a key at https://console.x.ai</div>
             <div className="mt-1 text-[var(--accent)]">export XAI_API_KEY=&quot;xai-...&quot;</div>
             <div className="mt-1">Then restart: npm run dev</div>
@@ -309,10 +312,8 @@ function TaskResultCard({
   if (taskId === "explain") {
     if (result.explanation == null) return <MissingCard label={label} />;
     return (
-      <PanelShell title={label} accent="info">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--fg-dim)]">
-          {result.explanation}
-        </p>
+      <PanelShell title={label} accent="info" copyText={result.explanation}>
+        <ExpandableProse text={result.explanation} />
       </PanelShell>
     );
   }
@@ -329,26 +330,18 @@ function TaskResultCard({
         actions={
           <div className="flex items-center gap-1">
             {showDiff && (
-              <div className="mr-1 flex border border-[var(--border)]">
+              <div className="seg mr-1">
                 <button
                   type="button"
                   onClick={() => setFixView("code")}
-                  className={`px-1.5 py-0.5 font-mono text-[10px] uppercase ${
-                    fixView === "code"
-                      ? "bg-[var(--accent-dim)] text-[var(--accent)]"
-                      : "text-[var(--muted)]"
-                  }`}
+                  className={`seg-btn ${fixView === "code" ? "seg-btn-on" : ""}`}
                 >
                   code
                 </button>
                 <button
                   type="button"
                   onClick={() => setFixView("diff")}
-                  className={`border-l border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] uppercase ${
-                    fixView === "diff"
-                      ? "bg-[var(--accent-dim)] text-[var(--accent)]"
-                      : "text-[var(--muted)]"
-                  }`}
+                  className={`seg-btn ${fixView === "diff" ? "seg-btn-on" : ""}`}
                 >
                   diff
                 </button>
@@ -463,20 +456,7 @@ function TaskResultCard({
     if (result.improvements == null) return <MissingCard label={label} />;
     return (
       <PanelShell title={label} accent="ok">
-        <ol className="space-y-2">
-          {result.improvements.map((item, i) => (
-            <li
-              key={i}
-              className="tip-card flex gap-2.5 border border-[var(--border)] bg-[var(--code-bg)] px-2.5 py-2 text-sm leading-relaxed text-[var(--fg-dim)] animate-fade-up"
-              style={{ animationDelay: `${i * 0.05}s` }}
-            >
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-[var(--border)] bg-[var(--surface-2)] font-mono text-[10px] font-semibold text-[var(--accent)]">
-                {i + 1}
-              </span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ol>
+        <ExpandableList items={result.improvements} />
       </PanelShell>
     );
   }
@@ -594,38 +574,115 @@ function MissingCard({ label }: { label: string }) {
   );
 }
 
+function ExpandableProse({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 420 || text.split("\n").length > 8;
+  return (
+    <div>
+      <p className={`prose-result ${long && !open ? "prose-result-clamp" : ""}`}>
+        {text}
+      </p>
+      {long && (
+        <button type="button" className="linkish mt-2" onClick={() => setOpen((v) => !v)}>
+          {open ? "Show less" : "Read more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ExpandableList({ items }: { items: string[] }) {
+  const [open, setOpen] = useState(false);
+  const limit = 4;
+  const visible = open || items.length <= limit ? items : items.slice(0, limit);
+  const hidden = items.length - visible.length;
+  return (
+    <div>
+      <ol className="space-y-2">
+        {visible.map((item, i) => (
+          <li
+            key={i}
+            className="tip-card flex gap-2.5 border border-[var(--border)] bg-[var(--code-bg)] px-2.5 py-2 text-sm leading-relaxed text-[var(--fg-dim)] animate-fade-up"
+            style={{ animationDelay: `${i * 0.04}s` }}
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-[var(--border)] bg-[var(--surface-2)] font-mono text-[10px] font-semibold text-[var(--accent)]">
+              {i + 1}
+            </span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ol>
+      {hidden > 0 && (
+        <button type="button" className="linkish mt-2" onClick={() => setOpen(true)}>
+          Show {hidden} more
+        </button>
+      )}
+      {open && items.length > limit && (
+        <button type="button" className="linkish mt-2 ml-3" onClick={() => setOpen(false)}>
+          Show less
+        </button>
+      )}
+    </div>
+  );
+}
+
 function PanelShell({
   title,
   children,
   accent,
   badge,
   actions,
+  copyText,
 }: {
   title: string;
   children: React.ReactNode;
   accent: "info" | "danger" | "ok" | "muted";
   badge?: string;
   actions?: React.ReactNode;
+  copyText?: string;
 }) {
+  const [copied, setCopied] = useState(false);
   const rails: Record<string, string> = {
     info: "panel-rail-info",
     danger: "panel-rail-danger",
     ok: "panel-rail-ok",
     muted: "panel-rail-default",
   };
+
+  const onCopy = async () => {
+    if (!copyText) return;
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <section
       className={`result-panel animate-fade-up border border-[var(--border)] border-l-2 bg-[var(--surface)] ${rails[accent]}`}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5">
+      <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)]/80 px-3 py-1.5">
         <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--fg-dim)]">
           {title}
         </h3>
         <div className="flex items-center gap-1.5">
           {badge && (
-            <span className="border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted)]">
+            <span className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted)]">
               {badge}
             </span>
+          )}
+          {copyText && (
+            <button
+              type="button"
+              onClick={() => void onCopy()}
+              className="btn-ghost !px-1.5 !py-0.5 text-[10px]"
+              title="Copy section"
+            >
+              {copied ? "copied" : "copy"}
+            </button>
           )}
           {actions}
         </div>
@@ -657,11 +714,11 @@ function ExportMenu({
         export ▾
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 min-w-[7rem] border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+        <div className="menu-panel absolute right-0 top-full z-30 mt-1 min-w-[7.5rem] py-1">
           {onExportMarkdown && (
             <button
               type="button"
-              className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+              className="menu-item"
               onClick={() => {
                 onExportMarkdown();
                 setOpen(false);
@@ -673,7 +730,7 @@ function ExportMenu({
           {onExportJson && (
             <button
               type="button"
-              className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+              className="menu-item"
               onClick={() => {
                 onExportJson();
                 setOpen(false);
@@ -685,7 +742,7 @@ function ExportMenu({
           {onExportSarif && (
             <button
               type="button"
-              className="block w-full px-3 py-1.5 text-left font-mono text-[10px] text-[var(--fg-dim)] hover:bg-[var(--surface-2)] hover:text-[var(--accent)]"
+              className="menu-item"
               onClick={() => {
                 onExportSarif();
                 setOpen(false);

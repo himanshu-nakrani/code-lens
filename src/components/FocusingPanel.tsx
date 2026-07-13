@@ -26,7 +26,7 @@ export function FocusingPanel({
   const progress = Math.min(96, 12 + (elapsedMs / 1000) * 11);
 
   return (
-    <div className="flex h-full flex-col px-4 py-6">
+    <div className="flex h-full flex-col px-4 py-6" aria-live="polite" aria-busy="true">
       <div className="flex flex-col items-center gap-3">
         <div className="focus-orb" aria-hidden>
           <div className="focus-orb-ring" />
@@ -39,16 +39,22 @@ export function FocusingPanel({
         </div>
 
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted-2)]">
-          focusing
+          analyzing
         </p>
         <p className="min-h-[1.1rem] font-mono text-[12px] text-[var(--accent)]">
           {STEPS[stepIdx % STEPS.length]}
         </p>
         <p className="font-mono text-[10px] text-[var(--muted-2)]">
-          {enabledTasks.length} lens{enabledTasks.length === 1 ? "" : "es"} · grok-4.5
+          {enabledTasks.length} lens{enabledTasks.length === 1 ? "" : "es"}
         </p>
 
-        <div className="mt-1 h-1 w-full max-w-[220px] overflow-hidden bg-[var(--border)]">
+        <div
+          className="mt-1 h-1 w-full max-w-[220px] overflow-hidden rounded-full bg-[var(--border)]"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
+        >
           <div
             className="h-full bg-[var(--accent)] transition-all duration-500"
             style={{
@@ -60,7 +66,7 @@ export function FocusingPanel({
 
         {onCancel && (
           <button type="button" onClick={onCancel} className="btn-secondary mt-2">
-            abort
+            Cancel
           </button>
         )}
       </div>

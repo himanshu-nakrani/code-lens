@@ -18,7 +18,7 @@ function langShort(lang: string): string {
 
 /** Tiny syntax tint for previews — illustrative, not a full parser */
 function tintPreview(src: string, language: string): string {
-  const lines = src.split("\n").filter((l) => l.trim().length > 0).slice(0, 6);
+  const lines = src.split("\n").filter((l) => l.trim().length > 0).slice(0, 5);
   return lines
     .map((line) => {
       let e = line
@@ -51,9 +51,9 @@ export function SampleCards({ onLoad, disabled }: SampleCardsProps) {
   const onMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width - 0.5) * 8;
-    const y = ((e.clientY - r.top) / r.height - 0.5) * -8;
-    el.style.transform = `translateY(-4px) rotateX(${y}deg) rotateY(${x}deg) scale(1.02)`;
+    const x = ((e.clientX - r.left) / r.width - 0.5) * 6;
+    const y = ((e.clientY - r.top) / r.height - 0.5) * -6;
+    el.style.transform = `translateY(-3px) rotateX(${y}deg) rotateY(${x}deg) scale(1.015)`;
   }, []);
 
   const onLeave = useCallback((e: React.MouseEvent<HTMLElement>) => {
@@ -67,7 +67,7 @@ export function SampleCards({ onLoad, disabled }: SampleCardsProps) {
         return (
           <article
             key={s.id}
-            className={`sample-focus-card animate-fade-up stagger-${i + 1}`}
+            className={`sample-focus-card animate-fade-up stagger-${Math.min(i + 1, 4)}`}
             onMouseMove={onMove}
             onMouseLeave={onLeave}
           >
@@ -75,15 +75,12 @@ export function SampleCards({ onLoad, disabled }: SampleCardsProps) {
               {i + 1}
             </span>
             <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-mono text-[10px] text-[var(--muted-2)]">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
+              <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate font-mono text-[12px] font-medium text-[var(--fg)]">
                   {s.name}
                 </span>
               </div>
-              <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-[var(--accent)]">
+              <span className="shrink-0 rounded-[var(--radius)] border border-[var(--border)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-[var(--muted)]">
                 {langShort(s.language)}
               </span>
             </div>
@@ -99,25 +96,27 @@ export function SampleCards({ onLoad, disabled }: SampleCardsProps) {
               <p className="font-mono text-[10px] uppercase tracking-wide text-[var(--muted-2)]">
                 {meta?.tag}
               </p>
-              <p className="mt-0.5 text-[11px] leading-snug text-[var(--muted)]">
+              <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[var(--muted)]">
                 {meta?.blurb}
               </p>
-              <div className="mt-2.5 flex gap-1.5">
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onLoad(s, false)}
-                  className="btn-secondary flex-1 justify-center"
-                >
-                  inspect
-                </button>
+              <div className="mt-2.5 flex items-center gap-1.5">
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => onLoad(s, true)}
                   className="btn-primary flex-1 justify-center !py-1.5"
+                  title="Load and analyze"
                 >
-                  focus + run
+                  run
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onLoad(s, false)}
+                  className="btn-ghost !px-2.5 text-[11px]"
+                  title="Load without analyzing"
+                >
+                  open
                 </button>
               </div>
             </div>

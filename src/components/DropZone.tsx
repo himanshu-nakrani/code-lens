@@ -101,11 +101,11 @@ export function DropZone({ onFiles, disabled, compact }: DropZoneProps) {
         dragging ? "drop-zone-active" : ""
       } ${disabled ? "pointer-events-none opacity-50" : ""}`}
     >
-      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--accent)]">
-        {dragging ? "release to load" : "drop zone"}
+      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--accent)]">
+        {dragging ? "drop to load" : "drop files here"}
       </p>
-      <p className="mt-2 max-w-xs text-center text-[11px] leading-relaxed text-[var(--muted)]">
-        Source/text · 200 KB / file · 2 MB total · folders ok
+      <p className="mt-2 max-w-[16rem] text-center text-[11px] leading-relaxed text-[var(--muted)]">
+        Source files or a folder · up to 200&nbsp;KB each
       </p>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         <button
@@ -114,7 +114,7 @@ export function DropZone({ onFiles, disabled, compact }: DropZoneProps) {
           onClick={() => fileInputRef.current?.click()}
           className="btn-secondary"
         >
-          Files
+          Choose files
         </button>
         <button
           type="button"
@@ -122,7 +122,7 @@ export function DropZone({ onFiles, disabled, compact }: DropZoneProps) {
           onClick={() => dirInputRef.current?.click()}
           className="btn-secondary"
         >
-          Folder
+          Choose folder
         </button>
       </div>
       <input

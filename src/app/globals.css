@@ -836,6 +836,426 @@ html[data-theme="light"] .aperture-logo {
   background: color-mix(in srgb, var(--surface) 90%, var(--accent-dim));
 }
 
+/* ——— UX system: menus, focus, motion ——— */
+.menu-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow:
+    0 0 0 1px var(--accent-dim),
+    0 16px 40px color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(14px) saturate(1.1);
+  overflow: hidden;
+  animation: menu-in 0.14s ease-out;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  text-align: left;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--fg-dim);
+  transition: background 0.1s, color 0.1s;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--surface-2);
+  color: var(--accent);
+  outline: none;
+}
+
+.menu-item-active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.menu-sep {
+  border-top: 1px solid var(--border);
+  margin: 0.2rem 0;
+}
+
+.menu-label {
+  padding: 0.35rem 0.75rem 0.15rem;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+/* Keyboard focus — visible without cluttering mouse users */
+:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Smooth theme switch (token colors only) */
+html {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html,
+body,
+.app-header,
+.glass-footer,
+.modal-panel,
+.menu-panel,
+.result-panel,
+.code-block,
+.btn-primary,
+.btn-secondary,
+.task-chip {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Toast glass */
+.toast-item {
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--bg) 50%, transparent);
+}
+
+/* Mobile pane tabs */
+.mobile-tabs {
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.mobile-tab {
+  position: relative;
+  transition: color 0.15s;
+}
+
+.mobile-tab-active {
+  color: var(--accent);
+}
+
+.mobile-tab-active::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* Icon toolbar buttons */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 1.85rem;
+  padding: 0 0.45rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  color: var(--fg-dim);
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 11px;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.icon-btn:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.icon-btn-on {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* Empty hero copy */
+.hero-sub {
+  color: var(--muted);
+  max-width: 22rem;
+  line-height: 1.55;
+}
+
+/* Disabled analyze hint */
+.btn-primary:disabled {
+  position: relative;
+}
+
+/* Analyze CTA subtle pulse only when ready */
+.btn-primary-ready:not(:disabled) {
+  animation: cta-soft 2.8s ease-in-out infinite;
+}
+
+@keyframes cta-soft {
+  0%,
+  100% {
+    box-shadow:
+      0 0 18px var(--accent-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 28px var(--accent-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary-ready:not(:disabled),
+  .menu-panel {
+    animation: none !important;
+  }
+  html,
+  body,
+  .app-header,
+  .glass-footer,
+  .modal-panel,
+  .menu-panel,
+  .result-panel,
+  .code-block,
+  .btn-primary,
+  .btn-secondary,
+  .task-chip {
+    transition: none !important;
+  }
+}
+
+/* Modal scrim — softer than pure black; light-theme aware */
+.modal-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: color-mix(in srgb, #020617 72%, transparent);
+  backdrop-filter: blur(4px);
+  cursor: default;
+}
+
+html[data-theme="light"] .modal-scrim {
+  background: color-mix(in srgb, #0f172a 35%, transparent);
+}
+
+/* Form fields */
+.field {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--fg);
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.field:hover:not(:disabled) {
+  border-color: var(--border-bright);
+}
+
+.field:focus {
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.field:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+textarea.field {
+  resize: vertical;
+  min-height: 8rem;
+  line-height: 1.5;
+}
+
+/* Diff view */
+.diff-shell {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--code-bg);
+}
+
+.diff-shell-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  padding: 0.35rem 0.55rem;
+}
+
+/* Empty / idle illustrations */
+.empty-mark {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 12px;
+}
+
+/* Skeleton pulse for soft loading placeholders */
+.skel {
+  border-radius: var(--radius);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    color-mix(in srgb, var(--surface-3) 80%, var(--accent-dim)) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: skel-shine 1.4s ease-in-out infinite;
+}
+
+@keyframes skel-shine {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel {
+    animation: none;
+  }
+}
+
+/* File row active rail soft glow */
+.file-active-rail {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Link-styled ghost for secondary empty actions */
+.linkish {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border-bright);
+  transition: color 0.12s, text-decoration-color 0.12s;
+}
+
+.linkish:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent-border);
+}
+
+/* Segmented control (src/fix, code/diff) */
+.seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.seg-btn {
+  padding: 0.2rem 0.55rem;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: background 0.12s, color 0.12s;
+}
+
+.seg-btn + .seg-btn {
+  border-left: 1px solid var(--border);
+}
+
+.seg-btn:hover {
+  color: var(--fg-dim);
+}
+
+.seg-btn-on {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.seg-btn-on-ok {
+  background: var(--ok-dim);
+  color: var(--ok);
+}
+
+/* Clickable status metric */
+.status-click {
+  cursor: pointer;
+  border-radius: var(--radius);
+  padding: 0.05rem 0.25rem;
+  margin: -0.05rem -0.25rem;
+  transition: background 0.12s, color 0.12s;
+}
+
+.status-click:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* Prose blocks in results */
+.prose-result {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+}
+
+.prose-result-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 kbd {
   font-family: var(--font-plex-mono), ui-monospace, monospace;
   font-size: 10px;
