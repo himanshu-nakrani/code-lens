@@ -242,7 +242,7 @@ export function ResultsPanel({
 
       {/* Tabs only when multiple lenses — avoid chrome for single-task runs */}
       {tabs.length > 2 && (
-        <div className="flex shrink-0 gap-0 overflow-x-auto border-b border-[var(--border)] px-1">
+        <div className="results-tabs sticky top-0 z-[1] flex shrink-0 gap-0 overflow-x-auto border-b border-[var(--border)] bg-[var(--bg)]/90 px-1 backdrop-blur-md">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -315,7 +315,7 @@ function TaskResultCard({
   onJumpToLine?: (line: number) => void;
   uiTheme?: ThemeId;
 }) {
-  const [fixView, setFixView] = useState<"code" | "diff">("code");
+  const [fixView, setFixView] = useState<"code" | "diff">("diff");
   const meta = ALL_TASKS.find((t) => t.id === taskId);
   const label = meta?.label ?? taskId;
 
@@ -517,19 +517,7 @@ function TaskResultCard({
             <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted-2)]">
               recommendations
             </p>
-            <ol className="space-y-1.5">
-              {a.recommendations.map((r, i) => (
-                <li
-                  key={i}
-                  className="tip-card flex gap-2 border border-[var(--border)] bg-[var(--code-bg)] px-2.5 py-2 text-xs leading-relaxed text-[var(--fg-dim)]"
-                >
-                  <span className="font-mono text-[10px] text-[var(--accent)]">
-                    {i + 1}
-                  </span>
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ol>
+            <ExpandableList items={a.recommendations} />
           </div>
         )}
       </PanelShell>

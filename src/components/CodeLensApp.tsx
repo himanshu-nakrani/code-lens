@@ -150,6 +150,7 @@ export function CodeLensApp() {
   const analyzeRef = useRef<() => void>(() => {});
   const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
   const abortRef = useRef<AbortController | null>(null);
+  const undoFixRef = useRef<{ path: string; content: string } | null>(null);
 
   // Client-only restore after mount (avoids SSR/localStorage hydration mismatch)
   useEffect(() => {
@@ -321,14 +322,59 @@ export function CodeLensApp() {
     [jumpToLine]
   );
 
-  const pushToast = useCallback((kind: ToastMessage["kind"], text: string) => {
-    const id = ++toastId.current;
-    setToasts((prev) => [...prev.slice(-4), { id, kind, text }]);
-  }, []);
+  const pushToast = useCallback(
+    (
+      kind: ToastMessage["kind"],
+      text: string,
+      opts?: {
+        actionLabel?: string;
+        onAction?: () => void;
+        durationMs?: number;
+      }
+    ) => {
+      const id = ++toastId.current;
+      setToasts((prev) => [
+        ...prev.slice(-4),
+        {
+          id,
+          kind,
+          text,
+          actionLabel: opts?.actionLabel,
+          onAction: opts?.onAction,
+          durationMs: opts?.durationMs,
+        },
+      ]);
+    },
+    []
+  );
 
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const undoLastFix = useCallback(() => {
+    const snap = undoFixRef.current;
+    if (!snap) {
+      pushToast("info", "Nothing to undo");
+      return;
+    }
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.path === snap.path
+          ? {
+              ...f,
+              content: snap.content,
+              size: new TextEncoder().encode(snap.content).length,
+            }
+          : f
+      )
+    );
+    undoFixRef.current = null;
+    selectPath(snap.path);
+    setViewerMode("source");
+    setMobilePane("code");
+    pushToast("info", `Reverted ${snap.path}`);
+  }, [pushToast, selectPath]);
 
   const restoreHistory = useCallback(
     (entry: AnalysisHistoryEntry) => {
@@ -685,6 +731,10 @@ export function CodeLensApp() {
         pushToast("error", "Select a file to apply the fix");
         return;
       }
+      const current = files.find((f) => f.path === selectedPath);
+      if (current) {
+        undoFixRef.current = { path: selectedPath, content: current.content };
+      }
       setFiles((prev) =>
         prev.map((f) =>
           f.path === selectedPath
@@ -698,9 +748,13 @@ export function CodeLensApp() {
       );
       setViewerMode("source");
       setMobilePane("code");
-      pushToast("success", "Applied fixed code to " + selectedPath);
+      pushToast("success", `Applied fix · ${selectedPath}`, {
+        actionLabel: "Undo",
+        onAction: () => undoLastFix(),
+        durationMs: 9000,
+      });
     },
-    [selectedPath, pushToast]
+    [selectedPath, files, pushToast, undoLastFix]
   );
 
   const addTestsAsFile = useCallback(
@@ -834,6 +888,15 @@ export function CodeLensApp() {
       // Block global shortcuts while any modal/palette is open (paste, cmd, github, help)
       const modalOpen = pasteOpen || cmdOpen || githubOpen || helpOpen;
 
+      // Undo last applied fix (does not intercept when typing)
+      if (meta && !e.shiftKey && e.key.toLowerCase() === "z" && !inInput && !modalOpen) {
+        if (undoFixRef.current) {
+          e.preventDefault();
+          undoLastFix();
+          return;
+        }
+      }
+
       if (meta && e.key === "Enter" && !modalOpen) {
         e.preventDefault();
         if (!loading) analyzeRef.current();
@@ -918,6 +981,7 @@ export function CodeLensApp() {
     lineFindings,
     findingNavIndex,
     jumpToFinding,
+    undoLastFix,
   ]);
 
   const canAnalyze = files.length > 0 && enabledTasks.size > 0 && !loading;
@@ -1028,6 +1092,13 @@ export function CodeLensApp() {
         run: () => setUiTheme((t) => toggleTheme(t)),
       },
       {
+        id: "undo-fix",
+        label: "Undo last applied fix",
+        hint: "⌘Z",
+        group: "Workspace",
+        run: () => undoLastFix(),
+      },
+      {
         id: "share",
         label: "Copy share summary",
         group: "Export",
@@ -1054,6 +1125,7 @@ export function CodeLensApp() {
       depth,
       focusNoteOpen,
       uiTheme,
+      undoLastFix,
     ]
   );
 

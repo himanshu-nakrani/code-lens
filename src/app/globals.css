@@ -1241,6 +1241,11 @@ textarea.field {
   color: var(--accent);
 }
 
+/* Sticky results tabs */
+.results-tabs {
+  box-shadow: 0 1px 0 var(--border);
+}
+
 /* Prose blocks in results */
 .prose-result {
   white-space: pre-wrap;

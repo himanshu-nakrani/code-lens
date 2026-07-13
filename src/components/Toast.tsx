@@ -8,6 +8,9 @@ export interface ToastMessage {
   id: number;
   kind: ToastKind;
   text: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  durationMs?: number;
 }
 
 interface ToastStackProps {
@@ -18,7 +21,7 @@ interface ToastStackProps {
 export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
   return (
     <div
-      className="pointer-events-none fixed bottom-10 right-3 z-50 flex w-[min(300px,calc(100vw-1.5rem))] flex-col gap-1.5"
+      className="pointer-events-none fixed bottom-10 right-3 z-50 flex w-[min(320px,calc(100vw-1.5rem))] flex-col gap-1.5"
       aria-live="polite"
     >
       {toasts.map((t) => (
@@ -35,10 +38,13 @@ function ToastItem({
   toast: ToastMessage;
   onDismiss: (id: number) => void;
 }) {
+  const duration =
+    toast.durationMs ?? (toast.actionLabel && toast.onAction ? 8000 : 2600);
+
   useEffect(() => {
-    const t = setTimeout(() => onDismiss(toast.id), 2600);
+    const t = setTimeout(() => onDismiss(toast.id), duration);
     return () => clearTimeout(t);
-  }, [toast.id, onDismiss]);
+  }, [toast.id, duration, onDismiss]);
 
   const rail =
     toast.kind === "success"
@@ -63,12 +69,24 @@ function ToastItem({
       role="status"
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="leading-relaxed">
+        <div className="min-w-0 flex-1 leading-relaxed">
           <span className={`mr-2 font-semibold uppercase tracking-wide ${labelColor}`}>
             {label}
           </span>
           <span className="text-[var(--fg-dim)]">{toast.text}</span>
-        </span>
+          {toast.actionLabel && toast.onAction && (
+            <button
+              type="button"
+              className="ml-2 font-semibold text-[var(--accent)] underline decoration-[var(--accent-border)] underline-offset-2 hover:text-[var(--accent-hover)]"
+              onClick={() => {
+                toast.onAction?.();
+                onDismiss(toast.id);
+              }}
+            >
+              {toast.actionLabel}
+            </button>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => onDismiss(toast.id)}
