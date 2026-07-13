@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Code Lens</title>
+  <desc id="desc">An optical instrument for source code — multi-lens analysis powered by grok-4.5</desc>
+
+  <defs>
+    <!-- Glass Sapphire field -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#070a0f"/>
+      <stop offset="45%" stop-color="#0b1018"/>
+      <stop offset="100%" stop-color="#0a1210"/>
+    </linearGradient>
+    <radialGradient id="beam" cx="50%" cy="48%" r="42%">
+      <stop offset="0%" stop-color="#4dff9a" stop-opacity="0.22"/>
+      <stop offset="35%" stop-color="#3d8cff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#0b1018" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4dff9a" stop-opacity="0.95"/>
+      <stop offset="40%" stop-color="#4dff9a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#4dff9a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#141c28" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0c121a" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="paneEdge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4dff9a" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#4dff9a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#4dff9a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="codeFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8b95a8" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#4dff9a" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="signalFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4dff9a" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#3d8cff" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="tinyGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="stageClip">
+      <rect x="48" y="40" width="1184" height="440" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <!-- Canvas -->
+  <rect width="1280" height="520" fill="url(#bg)"/>
+  <rect width="1280" height="520" fill="url(#beam)"/>
+
+  <!-- Micro grid (instrument plate) -->
+  <g stroke="#1a2433" stroke-width="1" opacity="0.55">
+    <path d="M0 130 H1280 M0 260 H1280 M0 390 H1280"/>
+    <path d="M213 0 V520 M426 0 V520 M640 0 V520 M853 0 V520 M1066 0 V520"/>
+  </g>
+
+  <!-- Outer stage -->
+  <rect x="48" y="40" width="1184" height="440" rx="24" fill="url(#glass)" stroke="#243041" stroke-width="1.25"/>
+  <rect x="48" y="40" width="1184" height="440" rx="24" fill="none" stroke="url(#paneEdge)" stroke-width="1" opacity="0.7"/>
+
+  <!-- Top instrument chrome -->
+  <g clip-path="url(#stageClip)">
+    <rect x="48" y="40" width="1184" height="36" fill="#0e141d" opacity="0.9"/>
+    <line x1="48" y1="76" x2="1232" y2="76" stroke="#243041" stroke-width="1"/>
+  </g>
+  <!-- Traffic / status dots -->
+  <circle cx="76" cy="58" r="4" fill="#ff5f57" opacity="0.85"/>
+  <circle cx="94" cy="58" r="4" fill="#febc2e" opacity="0.85"/>
+  <circle cx="112" cy="58" r="4" fill="#28c840" opacity="0.85"/>
+  <text x="148" y="62" fill="#6b7588" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing="1.5">CODE-LENS · OPTICAL ANALYZER</text>
+  <text x="1188" y="62" text-anchor="end" fill="#4dff9a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing="1.2" opacity="0.9">GROK-4.5</text>
+
+  <!-- ============ LEFT: SOURCE STREAM ============ -->
+  <g transform="translate(88 118)">
+    <text x="0" y="0" fill="#5a6478" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="2">SOURCE</text>
+    <!-- file chip -->
+    <rect x="0" y="16" width="132" height="22" rx="4" fill="#141c28" stroke="#2a3548" stroke-width="1"/>
+    <circle cx="14" cy="27" r="3.5" fill="#4dff9a" opacity="0.9"/>
+    <text x="26" y="31" fill="#c8d0dc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">auth.ts</text>
+
+    <!-- code lines flowing into the lens -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">
+      <text x="0" y="68" fill="#3d4658">16</text>
+      <text x="28" y="68" fill="#7a8498">try {</text>
+
+      <text x="0" y="90" fill="#3d4658">17</text>
+      <text x="28" y="90" fill="#9aa3b5">  login(req)</text>
+
+      <text x="0" y="112" fill="#ff6b6b" opacity="0.95">18</text>
+      <text x="28" y="112" fill="#e8b4b4">} catch (e) {}</text>
+      <rect x="24" y="100" width="148" height="18" rx="3" fill="#ff5f57" opacity="0.08"/>
+
+      <text x="0" y="134" fill="#3d4658">19</text>
+      <text x="28" y="134" fill="#5a6478">// TODO: audit</text>
+
+      <text x="0" y="156" fill="#3d4658">20</text>
+      <text x="28" y="156" fill="#7a8498">return token</text>
+    </g>
+
+    <!-- local scan strip -->
+    <rect x="0" y="178" width="200" height="28" rx="6" fill="#141c28" stroke="#2a3548" stroke-width="1"/>
+    <text x="12" y="196" fill="#5a6478" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="1">LOCAL</text>
+    <text x="58" y="196" fill="#ff8f6b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10">2 issues · 1 high</text>
+
+    <!-- light rays into aperture -->
+    <g stroke="url(#codeFade)" stroke-width="1.25" opacity="0.85">
+      <line x1="210" y1="90" x2="310" y2="148"/>
+      <line x1="210" y1="112" x2="310" y2="168"/>
+      <line x1="210" y1="134" x2="310" y2="188"/>
+    </g>
+  </g>
+
+  <!-- ============ CENTER: APERTURE ============ -->
+  <g transform="translate(640 268)">
+    <!-- reticle ticks -->
+    <g stroke="#4dff9a" stroke-width="1.4" stroke-linecap="round" opacity="0.35">
+      <line x1="0" y1="-118" x2="0" y2="-102"/>
+      <line x1="0" y1="102" x2="0" y2="118"/>
+      <line x1="-118" y1="0" x2="-102" y2="0"/>
+      <line x1="102" y1="0" x2="118" y2="0"/>
+    </g>
+    <g stroke="#6b7588" stroke-width="1" stroke-linecap="round" opacity="0.28">
+      <line x1="83" y1="-83" x2="72" y2="-72"/>
+      <line x1="83" y1="83" x2="72" y2="72"/>
+      <line x1="-83" y1="83" x2="-72" y2="72"/>
+      <line x1="-83" y1="-83" x2="-72" y2="-72"/>
+      <line x1="59" y1="-102" x2="52" y2="-90"/>
+      <line x1="102" y1="-59" x2="90" y2="-52"/>
+      <line x1="102" y1="59" x2="90" y2="52"/>
+      <line x1="59" y1="102" x2="52" y2="90"/>
+      <line x1="-59" y1="102" x2="-52" y2="90"/>
+      <line x1="-102" y1="59" x2="-90" y2="52"/>
+      <line x1="-102" y1="-59" x2="-90" y2="-52"/>
+      <line x1="-59" y1="-102" x2="-52" y2="-90"/>
+    </g>
+
+    <!-- outer glass ring -->
+    <circle cx="0" cy="0" r="88" fill="#0c121a" stroke="#c8d0dc" stroke-width="1.75" opacity="0.95"/>
+    <circle cx="0" cy="0" r="88" fill="none" stroke="#4dff9a" stroke-width="8" opacity="0.06" filter="url(#softGlow)"/>
+
+    <!-- mid ring with dashed focus track -->
+    <circle cx="0" cy="0" r="68" fill="none" stroke="#2a3548" stroke-width="1.25"/>
+    <circle cx="0" cy="0" r="68" fill="none" stroke="#4dff9a" stroke-width="1.5" stroke-dasharray="6 10" opacity="0.45" transform="rotate(-20)"/>
+
+    <!-- six lens markers on the ring (multi-lens) -->
+    <g filter="url(#tinyGlow)">
+      <circle cx="0" cy="-68" r="4.5" fill="#4dff9a"/>
+      <circle cx="58.9" cy="-34" r="3.5" fill="#6ee7b7" opacity="0.85"/>
+      <circle cx="58.9" cy="34" r="3.5" fill="#6ee7b7" opacity="0.85"/>
+      <circle cx="0" cy="68" r="3.5" fill="#6ee7b7" opacity="0.7"/>
+      <circle cx="-58.9" cy="34" r="3.5" fill="#6ee7b7" opacity="0.7"/>
+      <circle cx="-58.9" cy="-34" r="3.5" fill="#6ee7b7" opacity="0.85"/>
+    </g>
+
+    <!-- iris blades -->
+    <g fill="#4dff9a" opacity="0.88">
+      <path d="M0 -48 L22 -18 L0 -10 Z"/>
+      <path d="M48 0 L18 22 L10 0 Z"/>
+      <path d="M0 48 L-22 18 L0 10 Z"/>
+      <path d="M-48 0 L-18 -22 L-10 0 Z"/>
+    </g>
+    <g fill="#3d8cff" opacity="0.35">
+      <path d="M34 -34 L28 0 L8 -18 Z"/>
+      <path d="M34 34 L0 28 L18 8 Z"/>
+      <path d="M-34 34 L-28 0 L-8 18 Z"/>
+      <path d="M-34 -34 L0 -28 L-18 -8 Z"/>
+    </g>
+
+    <!-- core -->
+    <circle cx="0" cy="0" r="22" fill="url(#coreGlow)" opacity="0.55"/>
+    <circle cx="0" cy="0" r="11" fill="#4dff9a" filter="url(#tinyGlow)"/>
+    <circle cx="0" cy="0" r="4" fill="#e8fff3"/>
+
+    <!-- lock label -->
+    <text y="138" text-anchor="middle" fill="#4dff9a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing="3.5" opacity="0.9">FOCUS LOCKED</text>
+  </g>
+
+  <!-- ============ RIGHT: ANALYSIS READOUT ============ -->
+  <g transform="translate(900 118)">
+    <text x="0" y="0" fill="#5a6478" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="2">ANALYSIS</text>
+
+    <!-- score dial -->
+    <g transform="translate(40 78)">
+      <circle cx="0" cy="0" r="42" fill="none" stroke="#1e2836" stroke-width="7"/>
+      <circle cx="0" cy="0" r="42" fill="none" stroke="#4dff9a" stroke-width="7" stroke-linecap="round"
+        stroke-dasharray="220 264" transform="rotate(-90)" opacity="0.9"/>
+      <text y="6" text-anchor="middle" fill="#e8edf5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="600">A</text>
+      <text y="26" text-anchor="middle" fill="#4dff9a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">91</text>
+    </g>
+    <text x="100" y="72" fill="#4dff9a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">▲ +4</text>
+    <text x="100" y="92" fill="#6b7588" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10">vs last run</text>
+
+    <!-- findings -->
+    <g transform="translate(0 140)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">
+      <rect x="0" y="0" width="260" height="28" rx="5" fill="#1a1214" stroke="#3d2528" stroke-width="1"/>
+      <circle cx="14" cy="14" r="3.5" fill="#ff5f57"/>
+      <text x="28" y="18" fill="#e8b4b4">L18 · empty catch · high</text>
+
+      <rect x="0" y="36" width="260" height="28" rx="5" fill="#141c28" stroke="#2a3548" stroke-width="1"/>
+      <circle cx="14" cy="50" r="3.5" fill="#febc2e"/>
+      <text x="28" y="54" fill="#c8d0dc">L19 · TODO marker · low</text>
+
+      <rect x="0" y="72" width="260" height="28" rx="5" fill="#141c28" stroke="#2a3548" stroke-width="1"/>
+      <circle cx="14" cy="86" r="3.5" fill="#4dff9a"/>
+      <text x="28" y="90" fill="#a8f0c8">fix ready · apply · tests</text>
+    </g>
+
+    <!-- rays from aperture into readout -->
+    <g stroke="url(#signalFade)" stroke-width="1.25" opacity="0.75" transform="translate(-110 -20)">
+      <line x1="0" y1="148" x2="90" y2="100"/>
+      <line x1="0" y1="168" x2="90" y2="148"/>
+      <line x1="0" y1="188" x2="90" y2="196"/>
+    </g>
+  </g>
+
+  <!-- ============ BOTTOM: SIX LENSES ============ -->
+  <g transform="translate(180 430)">
+    <line x1="0" y1="-8" x2="920" y2="-8" stroke="#243041" stroke-width="1"/>
+    <!-- lens chips -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="0.5">
+      <g transform="translate(0 0)">
+        <rect width="120" height="26" rx="13" fill="#12241c" stroke="#4dff9a" stroke-width="1" opacity="0.95"/>
+        <circle cx="16" cy="13" r="3.5" fill="#4dff9a"/>
+        <text x="28" y="17" fill="#a8f0c8">EXPLAIN</text>
+      </g>
+      <g transform="translate(132 0)">
+        <rect width="120" height="26" rx="13" fill="#12241c" stroke="#4dff9a" stroke-width="1" opacity="0.95"/>
+        <circle cx="16" cy="13" r="3.5" fill="#4dff9a"/>
+        <text x="28" y="17" fill="#a8f0c8">FIX BUGS</text>
+      </g>
+      <g transform="translate(264 0)">
+        <rect width="120" height="26" rx="13" fill="#12241c" stroke="#4dff9a" stroke-width="1" opacity="0.95"/>
+        <circle cx="16" cy="13" r="3.5" fill="#4dff9a"/>
+        <text x="28" y="17" fill="#a8f0c8">TESTS</text>
+      </g>
+      <g transform="translate(396 0)">
+        <rect width="132" height="26" rx="13" fill="#0f1620" stroke="#2a3548" stroke-width="1"/>
+        <circle cx="16" cy="13" r="3.5" fill="#6b7588"/>
+        <text x="28" y="17" fill="#8b95a8">IMPROVE</text>
+      </g>
+      <g transform="translate(540 0)">
+        <rect width="132" height="26" rx="13" fill="#0f1620" stroke="#2a3548" stroke-width="1"/>
+        <circle cx="16" cy="13" r="3.5" fill="#6b7588"/>
+        <text x="28" y="17" fill="#8b95a8">SECURITY</text>
+      </g>
+      <g transform="translate(684 0)">
+        <rect width="148" height="26" rx="13" fill="#0f1620" stroke="#2a3548" stroke-width="1"/>
+        <circle cx="16" cy="13" r="3.5" fill="#6b7588"/>
+        <text x="28" y="17" fill="#8b95a8">ARCHITECTURE</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Corner calibration marks -->
+  <g stroke="#4dff9a" stroke-width="1.25" opacity="0.35" stroke-linecap="square">
+    <path d="M64 56 V48 H72"/>
+    <path d="M1216 56 V48 H1208"/>
+    <path d="M64 464 V472 H72"/>
+    <path d="M1216 464 V472 H1208"/>
+  </g>
+</svg>

@@ -1,6 +1,11 @@
 <div align="center">
 
-<img src="public/og-banner.svg" alt="Code Lens — optical analyzer for source code" width="720" />
+<!-- Optical instrument header: source → aperture → analysis -->
+<img
+  src="public/readme-header.svg"
+  alt="Code Lens — source flows through an optical aperture into multi-lens analysis with quality scorecard"
+  width="920"
+/>
 
 # Code Lens
 
