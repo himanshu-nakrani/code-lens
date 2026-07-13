@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CodeBlock } from "./CodeBlock";
 import { DiffView } from "./DiffView";
 import { Scorecard } from "./Scorecard";
@@ -68,6 +68,7 @@ export function ResultsPanel({
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<"all" | TaskId>("all");
   const [stepIdx, setStepIdx] = useState(0);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading) {
@@ -79,6 +80,12 @@ export function ResultsPanel({
     }, 1600);
     return () => clearInterval(id);
   }, [loading]);
+
+  // New result → scroll results to top
+  useEffect(() => {
+    if (!result) return;
+    bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [result]);
 
   useEffect(() => {
     if (!result) return;
@@ -253,7 +260,10 @@ export function ResultsPanel({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+      <div
+        ref={bodyRef}
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
+      >
         {scorecard && activeTab === "all" && (
           <div className="animate-fade-up">
             <Scorecard

@@ -93,6 +93,14 @@ function loadStoredDepth(): AnalysisDepth {
   return "standard";
 }
 
+function formatRelative(at: number): string {
+  const sec = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (sec < 45) return "now";
+  if (sec < 3600) return `${Math.round(sec / 60)}m`;
+  if (sec < 86400) return `${Math.round(sec / 3600)}h`;
+  return `${Math.round(sec / 86400)}d`;
+}
+
 export function CodeLensApp() {
   const [files, setFiles] = useState<CodeFile[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -133,8 +141,11 @@ export function CodeLensApp() {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [uiTheme, setUiTheme] = useState<ThemeId>("dark");
+  const [clearArmed, setClearArmed] = useState(false);
+  const [showTip, setShowTip] = useState(false);
   const samplesMenuRef = useRef<HTMLDivElement>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
+  const clearArmedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastId = useRef(0);
   const analyzeRef = useRef<() => void>(() => {});
   const loadAndAnalyzeRef = useRef<(s: CodeFile) => void>(() => {});
@@ -166,6 +177,11 @@ export function CodeLensApp() {
     const t = resolveTheme();
     applyTheme(t);
     setUiTheme(t);
+    try {
+      if (!localStorage.getItem("code-lens-tip-v1")) setShowTip(true);
+    } catch {
+      /* ignore */
+    }
     setHydrated(true);
   }, []);
 
@@ -195,7 +211,7 @@ export function CodeLensApp() {
       .catch(() => setHasApiKey(null));
   }, []);
 
-  // Close calm overflow menus on outside click
+  // Close calm overflow menus on outside click / Escape
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -206,8 +222,19 @@ export function CodeLensApp() {
         setAddMenuOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setSamplesMenuOpen(false);
+      setAddMenuOpen(false);
+      setHistoryOpen(false);
+      setClearArmed(false);
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   // Auto-dismiss ingest banner after a few seconds
@@ -478,6 +505,15 @@ export function CodeLensApp() {
   }, [pushToast, selectPath]);
 
   const clearFiles = useCallback(() => {
+    if (!clearArmed) {
+      setClearArmed(true);
+      pushToast("info", "Click Clear again to confirm");
+      if (clearArmedTimer.current) clearTimeout(clearArmedTimer.current);
+      clearArmedTimer.current = setTimeout(() => setClearArmed(false), 3000);
+      return;
+    }
+    setClearArmed(false);
+    if (clearArmedTimer.current) clearTimeout(clearArmedTimer.current);
     setFiles([]);
     selectPath(null);
     setResult(null);
@@ -490,8 +526,10 @@ export function CodeLensApp() {
     setWorkspaceSource(null);
     setHighlightLine(null);
     setFindingNavIndex(0);
+    setHistoryOpen(false);
     clearWorkspace();
-  }, [selectPath]);
+    pushToast("info", "Workspace cleared");
+  }, [selectPath, clearArmed, pushToast]);
 
   const cancelAnalyze = useCallback(() => {
     abortRef.current?.abort();
@@ -1041,8 +1079,8 @@ export function CodeLensApp() {
                 <h1 className="font-mono text-[13px] font-semibold tracking-wide text-[var(--fg)]">
                   code-lens
                 </h1>
-                {hasApiKey === false && (
-                  <span className="font-mono text-[10px] text-[var(--danger)]">
+                        {hasApiKey === false && (
+                  <span className="rounded-[var(--radius)] border border-[var(--danger)]/40 bg-[var(--danger-dim)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--danger)]">
                     no key
                   </span>
                 )}
@@ -1161,10 +1199,13 @@ export function CodeLensApp() {
               <button
                 type="button"
                 onClick={clearFiles}
-                className="btn-ghost text-xs"
+                className={`btn-ghost text-xs ${
+                  clearArmed ? "text-[var(--danger)]" : ""
+                }`}
                 disabled={loading}
+                title={clearArmed ? "Click again to clear workspace" : "Clear workspace"}
               >
-                Clear
+                {clearArmed ? "confirm?" : "Clear"}
               </button>
             )}
             {loading ? (
@@ -1252,6 +1293,45 @@ export function CodeLensApp() {
           </div>
         )}
 
+        {hasApiKey === false && (
+          <div className="flex items-center gap-2 border-t border-[var(--danger)]/30 bg-[var(--danger-dim)] px-4 py-1.5">
+            <p className="min-w-0 flex-1 font-mono text-[10px] text-[var(--danger)]">
+              XAI_API_KEY missing — analysis will fail. Set the key and restart.
+            </p>
+            <a
+              href="https://console.x.ai"
+              target="_blank"
+              rel="noreferrer"
+              className="linkish !text-[10px] !text-[var(--danger)]"
+            >
+              console.x.ai
+            </a>
+          </div>
+        )}
+
+        {showTip && files.length === 0 && (
+          <div className="flex items-center gap-2 border-t border-[var(--border)] bg-[var(--accent-dim)] px-4 py-1.5">
+            <p className="min-w-0 flex-1 font-mono text-[10px] text-[var(--fg-dim)]">
+              Tip: press <span className="text-[var(--accent)]">1</span> to run a sample, or{" "}
+              <span className="text-[var(--accent)]">⌘K</span> for commands.
+            </p>
+            <button
+              type="button"
+              className="btn-ghost !px-1.5 !py-0.5 text-[10px]"
+              onClick={() => {
+                setShowTip(false);
+                try {
+                  localStorage.setItem("code-lens-tip-v1", "1");
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              got it
+            </button>
+          </div>
+        )}
+
         <div className="mobile-tabs flex border-t border-[var(--border)] lg:hidden">
           {(
             [
@@ -1335,8 +1415,8 @@ export function CodeLensApp() {
                           className="flex w-full items-center gap-2 rounded-[var(--radius)] px-1.5 py-1 text-left font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg-dim)]"
                           title={`${h.tasks.join(", ")} · ${h.findingCount} findings · ${(h.durationMs / 1000).toFixed(1)}s`}
                         >
-                          <span className="tabular-nums text-[var(--muted-2)]">
-                            {(h.durationMs / 1000).toFixed(1)}s
+                          <span className="shrink-0 tabular-nums text-[var(--muted-2)]">
+                            {formatRelative(h.at)}
                           </span>
                           <span className="min-w-0 flex-1 truncate">{h.target}</span>
                           {h.findingCount > 0 && (
@@ -1454,6 +1534,7 @@ export function CodeLensApp() {
               code={viewerCode}
               open={findOpen && Boolean(selectedFile)}
               onClose={() => setFindOpen(false)}
+              onJump={(line) => jumpToLine(line)}
             />
             {files.length === 0 ? (
               <div className="empty-workspace relative z-[1] flex h-full flex-col items-center justify-center gap-5 overflow-y-auto p-4 sm:p-6">

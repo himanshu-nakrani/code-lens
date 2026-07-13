@@ -53,9 +53,20 @@ export function FindingsNav({ findings, activeIndex, onJump }: FindingsNavProps)
           type="button"
           onClick={() => current.line != null && onJump(idx, current.line)}
           className="min-w-0 flex-1 truncate rounded-[var(--radius)] border border-transparent px-1.5 py-0.5 text-left font-mono text-[10px] text-[var(--accent)] transition hover:border-[var(--accent-border)] hover:bg-[var(--accent-dim)]"
-          title={current.title}
+          title={`${current.title} — n next · p prev`}
         >
-          L{current.line} · [{current.severity}] {current.title}
+          <span
+            className={`mr-1 inline-block rounded px-1 py-px text-[9px] uppercase ${
+              current.severity === "critical" || current.severity === "high"
+                ? "bg-[var(--danger-dim)] text-[var(--danger)]"
+                : current.severity === "medium"
+                  ? "bg-[rgba(240,193,90,0.12)] text-[var(--warn)]"
+                  : "bg-[var(--surface-2)] text-[var(--muted)]"
+            }`}
+          >
+            {current.severity}
+          </span>
+          L{current.line} · {current.title}
         </button>
       )}
     </div>
