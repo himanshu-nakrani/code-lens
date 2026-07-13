@@ -1,64 +1,126 @@
 <div align="center">
 
 ```
-        ╭──────────╮
-     ╭──┤  ◉  CL  ├──╮
-     │  ╰──────────╯  │
-     │   code-lens    │
-     ╰────────────────╯
+                    ·  ·  ·
+               ·              ·
+            ·      ╭─────╮      ·
+          ·     ╭──┤  ◉  ├──╮     ·
+         ·      │  ╰─────╯  │      ·
+         ·      │ code-lens │      ·
+          ·     ╰───────────╯     ·
+            ·      aperture      ·
+               ·              ·
+                    ·  ·  ·
 ```
 
 # Code Lens
 
-**Point the lens at your code.**  
-Drop a file or folder — get explanations, bug fixes, unit tests, and refactors from **grok-4.5**.
+### An optical instrument for source code.
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=nextdotjs)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![xAI](https://img.shields.io/badge/xAI-grok--4.5-4dff9a?style=flat-square)](https://docs.x.ai)
-[![Vitest](https://img.shields.io/badge/Vitest-tested-6E9F18?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
-[![License](https://img.shields.io/badge/license-private-555?style=flat-square)](#)
+**Point the lens. Lock focus. Read the signal.**  
+Drop a file, paste a snippet, or pull a GitHub tree — **grok-4.5** runs multi-lens analysis with structured findings, fixes, tests, and a live quality scorecard.
 
-[Live idea](#one-minute-demo) · [Setup](#quick-start) · [Architecture](#architecture) · [Security](#security)
+<br/>
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![xAI](https://img.shields.io/badge/xAI-grok--4.5-4dff9a?style=for-the-badge)](https://docs.x.ai)
+[![Vitest](https://img.shields.io/badge/Vitest-59_tests-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![License](https://img.shields.io/badge/license-private-1a1a1a?style=for-the-badge)](#license)
+
+<br/>
+
+| [Quick start](#-quick-start) | [Lenses](#-six-lenses) | [Studio](#-the-studio) | [Architecture](#-architecture) | [Security](#-security) |
+|:---:|:---:|:---:|:---:|:---:|
 
 </div>
 
 ---
 
-## What it is
+## Why Code Lens
 
-Code Lens is a **local developer tool** with an optical-instrument UI. You bring the source; it runs **real** analysis through the [xAI Responses API](https://docs.x.ai) — no mocked panels, no canned demos.
+Most AI code tools feel like chat bolted onto a textarea.  
+Code Lens is built like a **lab instrument** — three panes, phosphor accents, keyboard-first focus, and analysis that lands as **structured findings** you can jump to, apply, undo, and export.
 
-| Lens | Output |
-|:-----|:-------|
-| **Explain** | Plain-English walkthrough of what the code does |
-| **Fix Bugs** | Likely issues, rationale, corrected source + diff |
-| **Generate Tests** | Unit tests in a fitting framework (Jest, pytest, …) |
-| **Suggest Improvements** | Actionable refactors, quality, and performance tips |
+```
+  before                          after
+  ─────                           ─────
+  "explain this file"             quality A · 88  ▲+6
+  wall of prose                   L12  empty catch · high
+  hope the model is right         apply fix · add tests · SARIF
+```
 
-Three built-in samples (JS off-by-one · Python empty-list · TS utility) make the app demoable in under a minute with zero uploads.
+<div align="center">
+
+| Instant | Intelligent | Ownable |
+|:-------:|:-----------:|:-------:|
+| Local static scan before the API | Six grok-4.5 lenses | Diff · apply · undo · export |
+| No wait for TODOs / empty catch / `eval` | Explain · bugs · tests · security · architecture | Markdown · JSON · SARIF |
+
+</div>
 
 ---
 
-## Preview of the experience
+## Preview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  ◉  code-lens · optical analyzer · grok-4.5              [cmd] [paste]  │
-├──────────┬───────────────────────────────┬──────────────────────────────┤
-│  files   │  sumRange.js            js    │  analysis          ● locked  │
-│ ───────  │  ───────────────────────────  │  ──────────────────────────  │
-│  ∗ all   │   1  function sumRange(…) {   │  quality spectrum      A  88 │
-│  js      │   2    for (let i = …)        │  ──────────────────────────  │
-│  py      │   3  }                        │  EXPLAIN                     │
-│  ts      │                               │  Sums inclusive range…       │
-│          │  [src] [fix]  find wrap copy  │  FIX BUGS                    │
-│          │                               │  Off-by-one in loop…  [diff] │
-└──────────┴───────────────────────────────┴──────────────────────────────┘
-  FOCUS  samples/sumRange.js  javascript  ● locked        t+4.2s  grok-4.5
+┌─ code-lens · optical analyzer · grok-4.5 ────────────────── ⌘K · paste · github ─┐
+│                                                                                   │
+│  files          │  src/auth.ts · javascript · edit              │  analysis       │
+│  ─────────────  │  ───────────────────────────────────────────  │  ─────────────  │
+│  ∗ workspace    │  local · 2 issues · 1 high · L18 empty catch  │  score  A  91   │
+│  auth.ts   ●    │                                               │       ▲ +4      │
+│  db.js          │   16  try {                                   │  ─────────────  │
+│  tests/         │   17    login(req)                            │  ◎ explain      │
+│                 │   18  } catch (e) {}   ◂ high                 │  ◎ fix bugs     │
+│  recent         │   19                                          │  ◎ security     │
+│  ▸ 2 · B · 4f   │  [src] [fix]  find  wrap  copy  edit           │  next steps ▢▢  │
+│                 │                                               │  export · share │
+└─────────────────┴───────────────────────────────────────────────┴─────────────────┘
+  files 3 · 12.4 KB · javascript · 48L · local 2 · t+3.8s · grok-4.5
 ```
 
-Three-pane shell: **files** · **source** · **analysis** — with keyboard-first controls and a phosphor “instrument” aesthetic.
+**Glass Sapphire** (dark) and **Paper Glacier** (light) themes · resizable panes · session restore.
+
+---
+
+## Six lenses
+
+Toggle any combination. Run **standard** or **deep**. Optional focus note steers the model without swapping lenses.
+
+| Lens | What locks into focus |
+|:-----|:----------------------|
+| **Explain** | Plain-English walkthrough of intent and control flow |
+| **Fix Bugs** | Structured issues, rationale, corrected source + side-by-side diff |
+| **Generate Tests** | Framework-fit suite (Jest, pytest, …) + coverage notes |
+| **Improvements** | Actionable refactors for quality, clarity, performance |
+| **Security** | Risk level, CWE-aware findings, prioritized remediations |
+| **Architecture** | Coupling / cohesion, hotspots, structural recommendations |
+
+Built-in samples (JS off-by-one · Python empty-list · TS utility) make the app demoable in **under a minute** with zero uploads.
+
+---
+
+## The studio
+
+### Instant signal
+- **Local static scan** — TODOs, empty catches, `eval`, secret-ish patterns, and more, *before* the model returns
+- Gutter annotations + findings nav (`n` / `p`) for lined issues
+- Live **scorecard** with multi-axis quality and **score deltas** across runs
+
+### Workspace
+- Drag-and-drop **folder** or multi-file upload
+- **Paste** snippets · **GitHub repo** import
+- Single-file or whole-workspace focus
+- **Edit source** in-pane · apply fix · add tests as a new file · **undo**
+- File tree actions: select · remove · analyze one file
+- Session + analysis history in `localStorage` (restored on reload)
+
+### Instrument chrome
+- Command palette · keyboard map · focus mode
+- Resizable files / results panes (widths remembered)
+- Diff view · next-steps checklist · share summary
+- Export **Markdown**, **JSON**, **SARIF**
 
 ---
 
@@ -77,18 +139,18 @@ cd code-lens
 npm install
 ```
 
-### Configure the key
+### Configure
 
 ```bash
-# Shell (recommended for a single session)
+# Session
 export XAI_API_KEY="xai-..."
 
 # Or project-local (gitignored)
 cp .env.example .env
-# edit .env → XAI_API_KEY=xai-...
+# → XAI_API_KEY=xai-...
 ```
 
-> The app **will not start** without a key. Preflight prints setup instructions and exits non-zero.
+> The app **refuses to start** without a key. Preflight prints setup instructions and exits non-zero.
 
 ### Run
 
@@ -97,68 +159,60 @@ npm run dev
 # → http://localhost:3000
 ```
 
+### One-minute demo
+
+1. Open the app with `XAI_API_KEY` set  
+2. Press **`1`** (or click the JS sample)  
+3. Watch local scan → focusing → results lock  
+4. Jump to a lined finding · apply fix · undo  
+
 ---
 
-## One-minute demo
-
-1. Start the app with `XAI_API_KEY` set  
-2. Open [http://localhost:3000](http://localhost:3000)  
-3. Press **`1`** or click **focus + run** on the JS sample  
-4. Watch the focusing orb → results lock on the right  
+## Keyboard
 
 | Key | Action |
 |:----|:-------|
-| `⌘/Ctrl + Enter` | Run analysis |
-| `⌘/Ctrl + K` | Command palette |
-| `⌘/Ctrl + F` | Find in file |
-| `⌘/Ctrl + ⇧ + P` | Paste code |
-| `1` `2` `3` | Empty: run samples · Loaded: switch panes |
+| `⌘/Ctrl` + `Enter` | Run analysis |
+| `⌘/Ctrl` + `K` | Command palette |
+| `⌘/Ctrl` + `F` | Find in file |
+| `⌘/Ctrl` + `S` | Save current file |
+| `⌘/Ctrl` + `⇧` + `P` | Paste code |
+| `⌘/Ctrl` + `⇧` + `G` | GitHub import |
+| `1` `2` `3` | Empty: load samples · Loaded: switch panes |
 | `[` `]` | Previous / next file |
-
----
-
-## Features
-
-### Analysis
-- **Four toggleable lenses** with presets (full · bugs · tests · quality)
-- **Whole-workspace or single-file** focus
-- **Apply fix** into the editor · **Add tests as a new file**
-- **Diff view** of original vs fixed code
-- **Export** results as Markdown or JSON · shareable summary
-
-### Workspace
-- Drag-and-drop **folder** or multi-file upload (`webkitdirectory`)
-- **Paste** snippets without saving files first
-- Client-side ingest only — caps, binary skip, clear skip reasons
-- Session restore via `localStorage` (files + last result)
-
-### Craft
-- Optical UI: aperture logo, scan beam, focus HUD, lock burst
-- Syntax-highlighted viewer and result blocks with copy / save
-- Dark instrument palette (IBM Plex · phosphor accent)
+| `n` / `p` | Next / previous lined finding |
+| `?` | Shortcuts |
 
 ---
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-  subgraph browser [Browser]
-    UI[Code Lens UI]
-    Files[File API · samples · paste]
+flowchart TB
+  subgraph client ["Browser · Code Lens UI"]
+    Ingest["Drop · paste · GitHub · samples"]
+    Local["localScan · instant heuristics"]
+    Workspace["workspace + history localStorage"]
+    UI["three-pane studio"]
   end
-  subgraph next [Next.js server]
+
+  subgraph server ["Next.js App Router"]
     Health["GET /api/health"]
+    GH["GET/POST /api/github"]
     Analyze["POST /api/analyze"]
     Grok["lib/grok.ts · server-only"]
   end
-  subgraph xai [xAI]
-    API["POST /v1/responses<br/>model grok-4.5"]
+
+  subgraph xai ["xAI"]
+    API["Responses API · grok-4.5"]
   end
 
-  Files --> UI
-  UI --> Analyze
+  Ingest --> UI
+  Local --> UI
+  Workspace --> UI
   UI --> Health
+  UI --> GH
+  UI --> Analyze
   Analyze --> Grok
   Grok --> API
   API --> Grok
@@ -169,10 +223,13 @@ flowchart LR
 | Path | Responsibility |
 |:-----|:---------------|
 | `src/components/*` | Client UI only — never imports the Grok helper |
-| `src/app/api/analyze` | Validate body → call Grok → parse strict JSON |
+| `src/app/api/analyze` | Validate → call model → parse strict JSON |
+| `src/app/api/github` | Repo tree fetch for import |
 | `src/app/api/health` | `{ ok, hasKey, model }` — no secrets |
-| `src/lib/grok.ts` | `server-only` Responses API client |
+| `src/lib/grok.ts` | `server-only` xAI Responses client |
+| `src/lib/local-scan.ts` | Pure client heuristics (unit-tested) |
 | `src/lib/parse.ts` | Fence-tolerant JSON recovery |
+| `src/lib/history-store.ts` | Slim persisted analysis history |
 | `src/lib/files.ts` | Browser ingest filters & size caps |
 
 ---
@@ -193,9 +250,7 @@ npm run dev
 # → exits 1, points you to https://console.x.ai
 ```
 
----
-
-## Upload safety
+### Upload safety
 
 | Limit | Value |
 |:------|:------|
@@ -215,12 +270,12 @@ Skipped and truncated files are reported in the UI — nothing is silently dropp
 | `npm run dev` | Key check → Next.js dev server |
 | `npm run build` | Production build |
 | `npm run start` | Key check → production server |
-| `npm test` | Vitest unit tests (shipped modules) |
+| `npm test` | Vitest (parse · ingest · local scan · history · security · …) |
 | `npm run lint` | ESLint |
 | `npm run check-key` | Preflight only |
 
 ```bash
-npm test          # parse · ingest · diff · validate · security
+npm test
 npm run build
 npm run start
 ```
@@ -232,20 +287,23 @@ npm run start
 ```
 code-lens/
 ├── scripts/
-│   └── check-api-key.js      # refuse start without XAI_API_KEY
+│   └── check-api-key.js       # refuse start without XAI_API_KEY
 ├── src/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── analyze/      # POST analysis
-│   │   │   └── health/       # GET readiness
-│   │   ├── globals.css       # instrument design system
+│   │   │   ├── analyze/       # POST multi-lens analysis
+│   │   │   ├── github/        # repo import
+│   │   │   └── health/        # readiness (no secrets)
+│   │   ├── globals.css        # Glass Sapphire · Paper Glacier
 │   │   └── page.tsx
-│   ├── components/           # three-pane UI, samples, results
+│   ├── components/            # studio UI · scorecard · scan · resize
 │   └── lib/
-│       ├── grok.ts           # server-only xAI client
-│       ├── parse.ts          # robust model JSON parse
-│       ├── files.ts          # File API ingest
-│       └── *.test.ts         # Vitest suites
+│       ├── grok.ts            # server-only xAI client
+│       ├── local-scan.ts      # instant heuristics
+│       ├── parse.ts           # robust model JSON parse
+│       ├── history-store.ts   # persisted run history
+│       ├── files.ts           # File API ingest
+│       └── *.test.ts
 ├── .env.example
 └── package.json
 ```
@@ -256,11 +314,11 @@ code-lens/
 
 | Layer | Choice |
 |:------|:-------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 + custom tokens |
+| Framework | Next.js 16 · App Router |
+| Language | TypeScript · React 19 |
+| Styling | Tailwind CSS 4 + design tokens |
 | Highlighting | Prism (`react-syntax-highlighter`) |
-| Model | xAI Responses API · `grok-4.5` |
+| Model | xAI Responses API · **grok-4.5** |
 | Tests | Vitest |
 
 ---
@@ -273,7 +331,17 @@ Private project. All rights reserved unless otherwise noted.
 
 <div align="center">
 
-**Code Lens** · built for local demos that feel production-real  
-Requires a key from [console.x.ai](https://console.x.ai)
+```
+         ╭─── ◉ ───╮
+         │  focus  │
+         ╰─────────╯
+```
+
+**Code Lens** — built for demos that feel production-real  
+Get a key at [console.x.ai](https://console.x.ai) · clone · `export XAI_API_KEY` · `npm run dev`
+
+<br/>
+
+<sub>Not affiliated with xAI. Requires your own API key.</sub>
 
 </div>
