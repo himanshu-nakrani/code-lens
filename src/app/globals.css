@@ -1105,10 +1105,6 @@ body,
   cursor: default;
 }
 
-html[data-theme="light"] .modal-scrim {
-  background: color-mix(in srgb, #1c2536 42%, transparent);
-}
-
 /* Form fields */
 .field {
   width: 100%;
