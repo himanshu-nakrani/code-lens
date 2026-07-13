@@ -1,21 +1,10 @@
 <div align="center">
 
-```
-                    ·  ·  ·
-               ·              ·
-            ·      ╭─────╮      ·
-          ·     ╭──┤  ◉  ├──╮     ·
-         ·      │  ╰─────╯  │      ·
-         ·      │ code-lens │      ·
-          ·     ╰───────────╯     ·
-            ·      aperture      ·
-               ·              ·
-                    ·  ·  ·
-```
+<img src="public/og-banner.svg" alt="Code Lens — optical analyzer for source code" width="720" />
 
 # Code Lens
 
-### An optical instrument for source code.
+### An optical instrument for source code
 
 **Point the lens. Lock focus. Read the signal.**  
 Drop a file, paste a snippet, or pull a GitHub tree — **grok-4.5** runs multi-lens analysis with structured findings, fixes, tests, and a live quality scorecard.
@@ -30,8 +19,15 @@ Drop a file, paste a snippet, or pull a GitHub tree — **grok-4.5** runs multi-
 
 <br/>
 
-| [Quick start](#-quick-start) | [Lenses](#-six-lenses) | [Studio](#-the-studio) | [Architecture](#-architecture) | [Security](#-security) |
-|:---:|:---:|:---:|:---:|:---:|
+[`Quick start`](#-quick-start)
+&nbsp;·&nbsp;
+[`Lenses`](#-six-lenses)
+&nbsp;·&nbsp;
+[`Studio`](#-the-studio)
+&nbsp;·&nbsp;
+[`Architecture`](#-architecture)
+&nbsp;·&nbsp;
+[`Security`](#-security)
 
 </div>
 
@@ -331,11 +327,9 @@ Private project. All rights reserved unless otherwise noted.
 
 <div align="center">
 
-```
-         ╭─── ◉ ───╮
-         │  focus  │
-         ╰─────────╯
-```
+<img src="public/aperture.svg" alt="Code Lens aperture mark" width="88" />
+
+<br/>
 
 **Code Lens** — built for demos that feel production-real  
 Get a key at [console.x.ai](https://console.x.ai) · clone · `export XAI_API_KEY` · `npm run dev`

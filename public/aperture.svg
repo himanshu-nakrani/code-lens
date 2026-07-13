@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" fill="none" role="img" aria-label="Code Lens aperture">
+  <!-- soft outer glow ring of ticks -->
+  <g stroke="#4dff9a" stroke-width="1.2" stroke-linecap="round" opacity="0.35">
+    <line x1="100" y1="14" x2="100" y2="22"/>
+    <line x1="100" y1="178" x2="100" y2="186"/>
+    <line x1="14" y1="100" x2="22" y2="100"/>
+    <line x1="178" y1="100" x2="186" y2="100"/>
+    <line x1="39.3" y1="39.3" x2="44.9" y2="44.9"/>
+    <line x1="155.1" y1="155.1" x2="160.7" y2="160.7"/>
+    <line x1="160.7" y1="39.3" x2="155.1" y2="44.9"/>
+    <line x1="44.9" y1="155.1" x2="39.3" y2="160.7"/>
+  </g>
+  <g stroke="#8b95a8" stroke-width="1" stroke-linecap="round" opacity="0.25">
+    <line x1="130.9" y1="20.4" x2="128.5" y2="27.6"/>
+    <line x1="179.6" y1="69.1" x2="172.4" y2="71.5"/>
+    <line x1="179.6" y1="130.9" x2="172.4" y2="128.5"/>
+    <line x1="130.9" y1="179.6" x2="128.5" y2="172.4"/>
+    <line x1="69.1" y1="179.6" x2="71.5" y2="172.4"/>
+    <line x1="20.4" y1="130.9" x2="27.6" y2="128.5"/>
+    <line x1="20.4" y1="69.1" x2="27.6" y2="71.5"/>
+    <line x1="69.1" y1="20.4" x2="71.5" y2="27.6"/>
+  </g>
+  <!-- outer ring -->
+  <circle cx="100" cy="100" r="52" stroke="#c8d0dc" stroke-width="1.5" opacity="0.9"/>
+  <!-- inner ring -->
+  <circle cx="100" cy="100" r="34" stroke="#4dff9a" stroke-width="1.25" opacity="0.55"/>
+  <!-- iris blades -->
+  <g fill="#4dff9a" opacity="0.85">
+    <path d="M100 58 L118 82 L100 88 Z"/>
+    <path d="M142 100 L118 118 L112 100 Z"/>
+    <path d="M100 142 L82 118 L100 112 Z"/>
+    <path d="M58 100 L82 82 L88 100 Z"/>
+  </g>
+  <!-- core -->
+  <circle cx="100" cy="100" r="9" fill="#4dff9a"/>
+  <circle cx="100" cy="100" r="9" fill="none" stroke="#4dff9a" stroke-width="6" opacity="0.25"/>
+</svg>
