@@ -9,6 +9,7 @@ import type {
   TaskId,
 } from "./types";
 import { collectAllFindings, worstSeverity } from "./findings";
+import { buildScorecard } from "./stats";
 
 export const MAX_HISTORY = 12;
 
@@ -23,6 +24,7 @@ export function buildHistoryEntry(opts: {
 }): AnalysisHistoryEntry {
   const findings = collectAllFindings(opts.result);
   const worst = worstSeverity(findings);
+  const card = buildScorecard(null, opts.result);
   return {
     id: opts.at ?? Date.now(),
     target: opts.target,
@@ -34,6 +36,8 @@ export function buildHistoryEntry(opts: {
     result: opts.result,
     findingCount: findings.length,
     worstSeverity: worst ?? undefined,
+    score: card.score,
+    grade: card.grade,
   };
 }
 

@@ -33,6 +33,8 @@ describe("buildHistoryEntry / prependHistory", () => {
     expect(entry.worstSeverity).toBe("critical");
     expect(entry.focusNote).toBe("auth");
     expect(entry.depth).toBe("deep");
+    expect(typeof entry.score).toBe("number");
+    expect(entry.grade).toMatch(/^[A-F]$/);
 
     const list = prependHistory(
       [entry],

@@ -102,6 +102,9 @@ export interface AnalysisHistoryEntry {
   result: AnalysisResult;
   findingCount: number;
   worstSeverity?: string;
+  /** Overall quality score 0–100 when available */
+  score?: number;
+  grade?: string;
 }
 
 export interface AnalyzeSuccess {

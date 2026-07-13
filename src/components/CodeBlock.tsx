@@ -32,6 +32,9 @@ interface CodeBlockProps {
   /** Hide dense toolbar chrome (calm code view). */
   compactToolbar?: boolean;
   uiTheme?: ThemeId;
+  /** Allow editing source (workspace files). */
+  editable?: boolean;
+  onChange?: (code: string) => void;
 }
 
 const toolBtn =
@@ -63,12 +66,20 @@ export function CodeBlock({
   onAnnotationClick,
   compactToolbar = true,
   uiTheme = "dark",
+  editable = false,
+  onChange,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const [wrap, setWrap] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Exit edit when parent disables editable or code path changes heavily
+  useEffect(() => {
+    if (!editable) setEditing(false);
+  }, [editable]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -168,6 +179,16 @@ export function CodeBlock({
 
         {compactToolbar ? (
           <div className="relative flex shrink-0 items-center gap-0.5" ref={menuRef}>
+            {editable && (
+              <button
+                type="button"
+                onClick={() => setEditing((v) => !v)}
+                className={editing ? toolBtnOn : toolBtn}
+                title={editing ? "View highlighted" : "Edit source"}
+              >
+                {editing ? "view" : "edit"}
+              </button>
+            )}
             <button
               type="button"
               onClick={onCopy}
@@ -290,37 +311,48 @@ export function CodeBlock({
         className="min-h-0 flex-1 overflow-auto"
         style={{ maxHeight }}
       >
-        <SyntaxHighlighter
-          language={prismLang}
-          style={prismThemeFor(uiTheme)}
-          showLineNumbers={showLineNumbers}
-          wrapLines
-          wrapLongLines={wrap}
-          lineProps={lineProps}
-          customStyle={{
-            margin: 0,
-            padding: "10px 0",
-            background: "transparent",
-            fontSize: `${fontSize}px`,
-            lineHeight: "1.55",
-            minHeight: "100%",
-            whiteSpace: wrap ? "pre-wrap" : "pre",
-            wordBreak: wrap ? "break-word" : "normal",
-          }}
-          lineNumberStyle={{
-            minWidth: "2.75em",
-            paddingRight: "0.85em",
-            color: lineNumberColor(uiTheme),
-            userSelect: "none",
-          }}
-          codeTagProps={{
-            style: {
-              fontFamily: "var(--font-plex-mono), ui-monospace, monospace",
-            },
-          }}
-        >
-          {code || " "}
-        </SyntaxHighlighter>
+        {editing && editable && onChange ? (
+          <textarea
+            className="code-editor field !min-h-full !rounded-none !border-0 !bg-transparent p-3 font-mono leading-[1.55]"
+            style={{ fontSize: `${fontSize}px` }}
+            value={code}
+            spellCheck={false}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label="Edit source"
+          />
+        ) : (
+          <SyntaxHighlighter
+            language={prismLang}
+            style={prismThemeFor(uiTheme)}
+            showLineNumbers={showLineNumbers}
+            wrapLines
+            wrapLongLines={wrap}
+            lineProps={lineProps}
+            customStyle={{
+              margin: 0,
+              padding: "10px 0",
+              background: "transparent",
+              fontSize: `${fontSize}px`,
+              lineHeight: "1.55",
+              minHeight: "100%",
+              whiteSpace: wrap ? "pre-wrap" : "pre",
+              wordBreak: wrap ? "break-word" : "normal",
+            }}
+            lineNumberStyle={{
+              minWidth: "2.75em",
+              paddingRight: "0.85em",
+              color: lineNumberColor(uiTheme),
+              userSelect: "none",
+            }}
+            codeTagProps={{
+              style: {
+                fontFamily: "var(--font-plex-mono), ui-monospace, monospace",
+              },
+            }}
+          >
+            {code || " "}
+          </SyntaxHighlighter>
+        )}
       </div>
     </div>
   );

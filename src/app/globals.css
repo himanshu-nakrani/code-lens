@@ -8,6 +8,9 @@
 
 :root,
 html[data-theme="dark"] {
+  /* Resizable pane defaults */
+  --files-w: 260px;
+  --results-w: 400px;
   /* Base atmosphere — deep sapphire night */
   --bg: #070b14;
   --surface: #0c1220;
@@ -1263,6 +1266,70 @@ html[data-theme="light"] .next-steps {
 
 html[data-theme="light"] .next-steps-done {
   background: color-mix(in srgb, var(--surface) 90%, var(--ok-dim));
+}
+
+/* Resizable panes — only on lg+ where multi-column grid is active */
+.resize-handle {
+  display: none;
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 5;
+  transition: background 0.15s;
+}
+
+@media (min-width: 1024px) {
+  .resize-handle {
+    display: block;
+  }
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--accent-dim);
+}
+
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: var(--border);
+}
+
+.workspace-grid {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .workspace-grid {
+    grid-template-columns: var(--files-w) 5px 1fr 5px var(--results-w);
+  }
+  .workspace-grid.focus-mode {
+    grid-template-columns: 1fr 5px var(--results-w);
+  }
+}
+
+.code-editor {
+  width: 100%;
+  min-height: 100%;
+  resize: none;
+  tab-size: 2;
+}
+
+.local-scan-strip {
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+}
+
+.local-scan-clear {
+  opacity: 0.85;
 }
 
 /* Prose blocks in results */

@@ -39,6 +39,10 @@ interface ResultsPanelProps {
   onAnalyze?: () => void;
   onJumpToLine?: (line: number) => void;
   uiTheme?: ThemeId;
+  /** Score change vs previous run (positive = improved). */
+  scoreDelta?: number | null;
+  /** Instant local static scan count for the selected file. */
+  localFindingCount?: number;
 }
 
 export function ResultsPanel({
@@ -65,6 +69,8 @@ export function ResultsPanel({
   onAnalyze,
   onJumpToLine,
   uiTheme = "dark",
+  scoreDelta = null,
+  localFindingCount = 0,
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<"all" | TaskId>("all");
   const [stepIdx, setStepIdx] = useState(0);
@@ -305,8 +311,15 @@ export function ResultsPanel({
               dimensions={scorecard.dimensions}
               severityCounts={scorecard.severityCounts}
               calm
+              scoreDelta={scoreDelta}
             />
           </div>
+        )}
+        {activeTab === "all" && localFindingCount > 0 && (
+          <p className="font-mono text-[10px] text-[var(--muted-2)]">
+            + {localFindingCount} local scan finding
+            {localFindingCount === 1 ? "" : "s"} in source (see code pane strip)
+          </p>
         )}
         {activeTab === "all" && (
           <NextSteps

@@ -23,6 +23,8 @@ import { LockBurst } from "./LockBurst";
 import { GrainOverlay } from "./GrainOverlay";
 import { FileNav } from "./FileNav";
 import { FindingsNav } from "./FindingsNav";
+import { LocalScanStrip } from "./LocalScanStrip";
+import { ResizeHandle, restorePaneWidths } from "./ResizeHandle";
 import { SAMPLE_META, SAMPLE_SNIPPETS } from "@/lib/samples";
 import { ingestFiles } from "@/lib/files";
 import { downloadText, resultToMarkdown } from "@/lib/export";
@@ -39,6 +41,11 @@ import {
   sortBySeverity,
 } from "@/lib/findings";
 import { buildHistoryEntry, prependHistory, resultToSarif } from "@/lib/history";
+import {
+  loadPersistedHistory,
+  savePersistedHistory,
+} from "@/lib/history-store";
+import { localScan } from "@/lib/local-scan";
 import type {
   AnalysisDepth,
   AnalysisHistoryEntry,
@@ -184,6 +191,9 @@ export function CodeLensApp() {
     const t = resolveTheme();
     applyTheme(t);
     setUiTheme(t);
+    restorePaneWidths();
+    const persisted = loadPersistedHistory();
+    if (persisted.length) setHistory(persisted);
     try {
       if (!localStorage.getItem("code-lens-tip-v1")) setShowTip(true);
       const fs = localStorage.getItem("code-lens-font-size");
@@ -197,6 +207,12 @@ export function CodeLensApp() {
     }
     setHydrated(true);
   }, []);
+
+  // Persist analysis history across reloads
+  useEffect(() => {
+    if (!hydrated) return;
+    savePersistedHistory(history);
+  }, [history, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -317,6 +333,16 @@ export function CodeLensApp() {
     }
   }, [depth, hydrated]);
 
+  /** Instant client heuristics — no API. */
+  const localFindings = useMemo(() => {
+    if (!selectedFile || showingFixed) return [];
+    return localScan(
+      selectedFile.content,
+      selectedFile.language,
+      selectedFile.path
+    );
+  }, [selectedFile, showingFixed]);
+
   const annotations = useMemo(
     () => (result && !showingFixed ? collectAllFindings(result) : []),
     [result, showingFixed]
@@ -330,12 +356,47 @@ export function CodeLensApp() {
   );
   const markedLines = lineFindings.length;
 
+  /** Score change vs previous analysis run. */
+  const scoreDelta = useMemo(() => {
+    if (!result || history.length === 0) return null;
+    let idx = history.findIndex((h) => h.result === result);
+    if (idx < 0 && lastTarget != null && durationMs != null) {
+      idx = history.findIndex(
+        (h) => h.target === lastTarget && h.durationMs === durationMs
+      );
+    }
+    if (idx < 0) idx = 0;
+    const curr = history[idx]?.score;
+    const prev = history[idx + 1]?.score;
+    if (curr == null || prev == null) return null;
+    return curr - prev;
+  }, [result, history, lastTarget, durationMs]);
+
   const selectPath = useCallback((path: string | null) => {
     setSelectedPath(path);
     setViewerMode("source");
     setFindOpen(false);
     setHighlightLine(null);
   }, []);
+
+  /** Live-edit selected source (editable CodeBlock). */
+  const updateSelectedContent = useCallback(
+    (code: string) => {
+      if (!selectedPath) return;
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.path === selectedPath
+            ? {
+                ...f,
+                content: code,
+                size: new TextEncoder().encode(code).length,
+              }
+            : f
+        )
+      );
+    },
+    [selectedPath]
+  );
 
   const jumpToLine = useCallback((line: number) => {
     setHighlightLine(line);
@@ -1575,14 +1636,11 @@ export function CodeLensApp() {
         />
       )}
 
-      <div
-        className={`relative grid min-h-0 flex-1 grid-cols-1 ${
-          focusMode
-            ? "lg:grid-cols-[1fr_minmax(340px,420px)]"
-            : "lg:grid-cols-[260px_1fr_minmax(340px,420px)]"
-        }`}
-      >
+      <div className="relative min-h-0 flex-1">
         <LockBurst trigger={lockBurstAt} />
+        <div
+          className={`workspace-grid relative h-full ${focusMode ? "focus-mode" : ""}`}
+        >
         {!focusMode && (
           <aside
             className={`${paneClass("files")} pane-split min-h-[200px] flex-col border-b border-[var(--border)] bg-[var(--surface)] lg:min-h-0 lg:border-b-0 lg:border-r`}
@@ -1624,12 +1682,17 @@ export function CodeLensApp() {
                           type="button"
                           onClick={() => restoreHistory(h)}
                           className="flex w-full items-center gap-2 rounded-[var(--radius)] px-1.5 py-1 text-left font-mono text-[10px] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg-dim)]"
-                          title={`${h.tasks.join(", ")} · ${h.findingCount} findings · ${(h.durationMs / 1000).toFixed(1)}s`}
+                          title={`${h.tasks.join(", ")} · ${h.findingCount} findings · score ${h.score ?? "—"} · ${(h.durationMs / 1000).toFixed(1)}s`}
                         >
                           <span className="shrink-0 tabular-nums text-[var(--muted-2)]">
                             {formatRelative(h.at)}
                           </span>
                           <span className="min-w-0 flex-1 truncate">{h.target}</span>
+                          {h.grade && (
+                            <span className="tabular-nums text-[var(--accent)]">
+                              {h.grade}
+                            </span>
+                          )}
                           {h.findingCount > 0 && (
                             <span className="text-[var(--muted-2)]">{h.findingCount}</span>
                           )}
@@ -1688,6 +1751,10 @@ export function CodeLensApp() {
           </aside>
         )}
 
+        {!focusMode && (
+          <ResizeHandle cssVar="--files-w" direction="right" min={180} max={420} />
+        )}
+
         <main
           className={`${paneClass("code")} relative min-h-[280px] flex-col border-b border-[var(--border)] bg-[var(--code-bg)] lg:min-h-0 lg:border-b-0 lg:border-r`}
         >
@@ -1738,6 +1805,9 @@ export function CodeLensApp() {
               )}
             </div>
           </div>
+          {selectedFile && !showingFixed && (
+            <LocalScanStrip findings={localFindings} onJump={jumpToLine} />
+          )}
           {selectedFile && lineFindings.length > 0 && !showingFixed && (
             <FindingsNav
               findings={lineFindings}
@@ -1837,6 +1907,8 @@ export function CodeLensApp() {
                   highlightLine={showingFixed ? null : highlightLine}
                   onAnnotationClick={jumpToLine}
                   uiTheme={uiTheme}
+                  editable={!showingFixed}
+                  onChange={showingFixed ? undefined : updateSelectedContent}
                 />
               </div>
             ) : (
@@ -1885,6 +1957,8 @@ export function CodeLensApp() {
             )}
           </div>
         </main>
+
+        <ResizeHandle cssVar="--results-w" direction="left" min={300} max={560} />
 
         <aside
           className={`${paneClass("results")} min-h-[320px] flex-col border-l border-[var(--border)] bg-[var(--bg)] lg:min-h-0 ${
@@ -1946,9 +2020,12 @@ export function CodeLensApp() {
               }}
               onExportSarif={result ? exportSarif : undefined}
               uiTheme={uiTheme}
+              scoreDelta={scoreDelta}
+              localFindingCount={localFindings.length}
             />
           </div>
         </aside>
+        </div>
       </div>
 
       <StatusBar

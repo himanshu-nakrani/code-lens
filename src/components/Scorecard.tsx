@@ -13,6 +13,8 @@ interface ScorecardProps {
   severityCounts?: ScorecardData["severityCounts"];
   /** When true, start with spectrum collapsed (calm default). */
   calm?: boolean;
+  /** Score change vs previous run (positive = improved). */
+  scoreDelta?: number | null;
 }
 
 const DIM_LABELS: { key: keyof NonNullable<ScorecardProps["dimensions"]>; label: string }[] = [
@@ -31,6 +33,7 @@ export function Scorecard({
   dimensions,
   severityCounts,
   calm = true,
+  scoreDelta = null,
 }: ScorecardProps) {
   const [display, setDisplay] = useState(0);
   const [spectrumOpen, setSpectrumOpen] = useState(!calm);
@@ -99,9 +102,22 @@ export function Scorecard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--muted-2)]">
-            quality
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--muted-2)]">
+              quality
+            </p>
+            {scoreDelta != null && scoreDelta !== 0 && (
+              <span
+                className={`font-mono text-[10px] tabular-nums ${
+                  scoreDelta > 0 ? "text-[var(--ok)]" : "text-[var(--danger)]"
+                }`}
+                title="Change vs previous run"
+              >
+                {scoreDelta > 0 ? "▲" : "▼"}
+                {Math.abs(scoreDelta)}
+              </span>
+            )}
+          </div>
           {stats && (
             <p className="mt-1 font-mono text-[11px] text-[var(--muted)]">
               {stats.code} loc · {stats.functions} fn · {stats.complexityHint} cx
