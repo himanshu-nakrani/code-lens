@@ -53,35 +53,35 @@ html[data-theme="dark"] {
   --body-grad: linear-gradient(180deg, #0a1020 0%, var(--bg) 40%, #060910 100%);
 }
 
-/* Paper Glacier — soft mist paper, never pure white / full brightness */
+/* Paper Glacier — dim overcast paper (low luminance, no bright whites) */
 html[data-theme="light"] {
-  --bg: #dfe6f0;
-  --surface: #e8edf5;
-  --surface-2: #dde4ef;
-  --surface-3: #d0d9e8;
-  --code-bg: #e4eaf3;
-  --border: #b4c0d2;
-  --border-bright: #8b9bb2;
-  --fg: #1c2536;
-  --fg-dim: #3a465c;
-  --muted: #5a6880;
-  --muted-2: #7a889c;
-  --accent: #3a6fd0;
-  --accent-hover: #2f5fba;
-  --accent-dim: rgba(58, 111, 208, 0.1);
-  --accent-border: rgba(58, 111, 208, 0.34);
-  --accent-glow: rgba(58, 111, 208, 0.16);
-  --danger: #c23b4a;
-  --danger-dim: rgba(194, 59, 74, 0.1);
-  --ok: #0d6b64;
-  --ok-dim: rgba(13, 107, 100, 0.1);
-  --warn: #a05a12;
-  --btn-primary-fg: #eef3fa;
-  --shadow-elevated: 0 18px 42px rgba(28, 45, 72, 0.1);
-  --grid-line: rgba(90, 110, 140, 0.1);
-  --body-glow-a: rgba(58, 111, 208, 0.07);
-  --body-glow-b: rgba(70, 130, 160, 0.05);
-  --body-grad: linear-gradient(180deg, #e6ebf3 0%, var(--bg) 42%, #d5dde9 100%);
+  --bg: #c9d2df;
+  --surface: #d3dbe8;
+  --surface-2: #c5cedc;
+  --surface-3: #b6c1d2;
+  --code-bg: #cdd5e3;
+  --border: #9aa8bc;
+  --border-bright: #7a8aa0;
+  --fg: #1a2230;
+  --fg-dim: #343f52;
+  --muted: #4e5c72;
+  --muted-2: #6a788c;
+  --accent: #355fba;
+  --accent-hover: #2a4f9e;
+  --accent-dim: rgba(53, 95, 186, 0.12);
+  --accent-border: rgba(53, 95, 186, 0.32);
+  --accent-glow: rgba(53, 95, 186, 0.14);
+  --danger: #b03545;
+  --danger-dim: rgba(176, 53, 69, 0.12);
+  --ok: #0b5c56;
+  --ok-dim: rgba(11, 92, 86, 0.12);
+  --warn: #8f5010;
+  --btn-primary-fg: #e4eaf4;
+  --shadow-elevated: 0 16px 36px rgba(20, 32, 52, 0.14);
+  --grid-line: rgba(60, 80, 110, 0.1);
+  --body-glow-a: rgba(53, 95, 186, 0.05);
+  --body-glow-b: rgba(50, 90, 120, 0.04);
+  --body-grad: linear-gradient(180deg, #d0d8e6 0%, var(--bg) 40%, #bdc7d6 100%);
 }
 
 @theme inline {
@@ -214,20 +214,20 @@ body {
 }
 
 html[data-theme="light"] .btn-primary {
-  background: linear-gradient(180deg, #4a7fd6 0%, var(--accent) 50%, #2f5fba 100%);
-  border-color: color-mix(in srgb, var(--accent) 72%, #2a4a7a);
+  background: linear-gradient(180deg, #4570c4 0%, var(--accent) 52%, #2a4f9e 100%);
+  border-color: color-mix(in srgb, var(--accent) 70%, #243a68);
   box-shadow:
-    0 0 16px var(--accent-glow),
-    0 1px 0 color-mix(in srgb, var(--bg) 50%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 0 12px var(--accent-glow),
+    0 1px 0 color-mix(in srgb, var(--bg) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 html[data-theme="light"] .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.03);
+  filter: brightness(1.02);
   box-shadow:
     0 0 0 1px var(--accent-hover),
-    0 0 20px var(--accent-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    0 0 16px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -510,10 +510,10 @@ html[data-theme="light"] .btn-primary:hover:not(:disabled) {
 .sample-preview .tok-str { color: #9ddea8; }
 .sample-preview .tok-cm { color: #5c6f8c; }
 
-html[data-theme="light"] .sample-preview .tok-kw { color: #2f5fba; }
-html[data-theme="light"] .sample-preview .tok-fn { color: #1f6a96; }
-html[data-theme="light"] .sample-preview .tok-str { color: #2f7a4a; }
-html[data-theme="light"] .sample-preview .tok-cm { color: #6b7a90; }
+html[data-theme="light"] .sample-preview .tok-kw { color: #2a4f9e; }
+html[data-theme="light"] .sample-preview .tok-fn { color: #1a5c84; }
+html[data-theme="light"] .sample-preview .tok-str { color: #286844; }
+html[data-theme="light"] .sample-preview .tok-cm { color: #5e6d82; }
 
 /* Drop zone magnetic */
 .drop-zone {
@@ -800,76 +800,84 @@ html[data-theme="light"] .sample-preview .tok-cm { color: #6b7a90; }
 }
 
 html[data-theme="light"] .modal-panel {
-  background: color-mix(in srgb, var(--surface) 88%, var(--surface-2));
+  background: color-mix(in srgb, var(--surface) 80%, var(--surface-2));
   box-shadow:
     0 0 0 1px var(--border),
     var(--shadow-elevated),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 html[data-theme="light"] .app-header {
-  background: color-mix(in srgb, var(--surface) 78%, var(--bg));
+  background: color-mix(in srgb, var(--surface) 70%, var(--bg));
   border-bottom-color: var(--border);
-  backdrop-filter: blur(12px) saturate(1.05);
+  backdrop-filter: blur(12px) saturate(0.95);
 }
 
 html[data-theme="light"] .glass-panel,
 html[data-theme="light"] .glass-footer,
 html[data-theme="light"] .glass-strip {
-  background: color-mix(in srgb, var(--surface) 82%, var(--surface-2));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  background: color-mix(in srgb, var(--surface) 72%, var(--surface-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 html[data-theme="light"] .code-block-toolbar {
-  background: color-mix(in srgb, var(--surface-2) 88%, var(--surface-3));
+  background: color-mix(in srgb, var(--surface-2) 82%, var(--surface-3));
 }
 
 html[data-theme="light"] .grain-overlay {
-  opacity: 0.028;
+  opacity: 0.04;
   mix-blend-mode: multiply;
 }
 
 html[data-theme="light"] .scan-vignette {
-  box-shadow: inset 0 0 90px rgba(28, 45, 72, 0.08);
+  box-shadow: inset 0 0 100px rgba(20, 32, 52, 0.12);
 }
 
 html[data-theme="light"] .result-panel {
-  background: color-mix(in srgb, var(--surface) 70%, var(--surface-2));
+  background: color-mix(in srgb, var(--surface) 55%, var(--surface-2));
 }
 
 html[data-theme="light"] .scorecard-panel {
-  background: color-mix(in srgb, var(--surface) 75%, var(--code-bg));
+  background: color-mix(in srgb, var(--surface) 60%, var(--code-bg));
 }
 
 html[data-theme="light"] .finding-card {
-  background: color-mix(in srgb, var(--code-bg) 92%, var(--surface-2)) !important;
+  background: color-mix(in srgb, var(--code-bg) 85%, var(--surface-2)) !important;
 }
 
 html[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--border-bright) 70%, var(--muted-2));
+  background: color-mix(in srgb, var(--border-bright) 65%, var(--muted-2));
 }
 
 html[data-theme="light"] .aperture-logo {
-  background: color-mix(in srgb, var(--surface-2) 88%, var(--accent-dim));
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--accent-dim));
 }
 
-/* Soften pure elevates that feel “blown out” on mist paper */
+/* Keep panes in the dim paper range */
 html[data-theme="light"] .pane-split,
 html[data-theme="light"] aside,
 html[data-theme="light"] main {
-  background-color: color-mix(in srgb, var(--surface) 88%, var(--bg));
+  background-color: color-mix(in srgb, var(--surface) 78%, var(--bg));
 }
 
 html[data-theme="light"] .field {
-  background: color-mix(in srgb, var(--code-bg) 90%, var(--surface-2));
+  background: color-mix(in srgb, var(--code-bg) 82%, var(--surface-2));
 }
 
 html[data-theme="light"] .menu-panel {
-  background: color-mix(in srgb, var(--surface) 86%, var(--surface-2));
+  background: color-mix(in srgb, var(--surface) 75%, var(--surface-2));
   box-shadow:
     0 0 0 1px var(--border),
-    0 12px 32px rgba(28, 45, 72, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    0 12px 28px rgba(20, 32, 52, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="light"] .next-steps {
+  background: color-mix(in srgb, var(--surface) 70%, var(--surface-2));
+}
+
+html[data-theme="light"] .modal-scrim {
+  background: color-mix(in srgb, #152033 48%, transparent);
 }
 
 /* ——— UX system: menus, focus, motion ——— */
